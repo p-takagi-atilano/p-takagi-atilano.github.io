@@ -31,8 +31,10 @@
   <p>Private. Requires sign-in.</p>
 </main>
 <script>
-  // Redirect immediately. Add ?stay to this URL to stay on this page (e.g. to Add to Home Screen).
-  if (!/[?&]stay\b/.test(location.search)) location.replace(document.querySelector('a.go').href);
+    // Opened from the home-screen icon (standalone) → always go to the app.
+  // In a normal tab, ?stay keeps this page so it can be added to the Home Screen with its icon.
+  var standalone = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
+  if (standalone || !/[?&]stay\b/.test(location.search)) location.replace(document.querySelector('a.go').href);
 </script>
 </body>
 </html>
