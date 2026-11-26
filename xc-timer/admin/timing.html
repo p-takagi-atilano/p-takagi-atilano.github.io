@@ -6,52 +6,57 @@
 <title>Race Timing · Admin · 2026 Silver Star PNW Time Trial</title>
 <meta name="robots" content="noindex,nofollow">
 <meta name="theme-color" content="#0b3d91">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Race Timing">
 <link rel="icon" href="../icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="../icon-192.png">
 <style>
-:root{--bg:#f4f6f9;--card:#fff;--ink:#0d1420;--muted:#5a6575;--line:#d5dbe4;--pri:#0b3d91;--soft:#e8eef8;--brk:#fff4dc;--brk-ink:#8a5a00}
-@media (prefers-color-scheme:dark){:root{--bg:#0e131b;--card:#161d28;--ink:#e8edf5;--muted:#9aa6b8;--line:#2a3445;--pri:#8fb3ff;--soft:#1f2a3c;--brk:#2e2614;--brk-ink:#f0c46a}}
+:root{--bg:#f4f6f9;--card:#fff;--ink:#0d1420;--muted:#5a6575;--line:#d5dbe4;--pri:#0b3d91;--soft:#e8eef8;--ok:#0a7a3d;--ok-bg:#dcf3e5;--warn:#8a5a00;--warn-bg:#fff4dc;--brk:#fff4dc;--brk-ink:#8a5a00;--go:#0a7a3d;--soon:#ffd166}
+@media (prefers-color-scheme:dark){:root{--bg:#0e131b;--card:#161d28;--ink:#e8edf5;--muted:#9aa6b8;--line:#2a3445;--pri:#8fb3ff;--soft:#1f2a3c;--ok:#4cc985;--ok-bg:#153222;--warn:#f0c46a;--warn-bg:#2e2614;--brk:#2e2614;--brk-ink:#f0c46a;--go:#1f9d55;--soon:#8a6d1a}}
 *{box-sizing:border-box}
+html,body{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
 header{background:#0b3d91;color:#fff;padding:calc(18px + env(safe-area-inset-top)) 16px 0}
 nav{display:flex;gap:4px;margin-top:14px;overflow-x:auto}
 nav a{color:#cfdcf5;text-decoration:none;font-weight:600;font-size:15px;padding:10px 16px;border-radius:10px 10px 0 0;white-space:nowrap}
 nav a.on{background:var(--bg);color:var(--pri)}
 header h1{margin:0;font-size:24px}
-main{max-width:820px;margin:0 auto;padding:16px}
+main{max-width:820px;margin:0 auto;padding:16px 16px calc(24px + env(safe-area-inset-bottom))}
 .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:14px}
-.top{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
 h2{font-size:17px;margin:0}
 .muted{color:var(--muted);font-size:13px}
-button{font:inherit;font-size:14px;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 12px;cursor:pointer}
-input{font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 8px}
-.settings{display:flex;gap:16px;flex-wrap:wrap}
-.settings label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted)}
-.settings input{width:120px}
-.sortbar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-height:34px;margin-bottom:8px;font-size:14px}
-.chip{display:inline-flex;align-items:center;gap:6px;background:var(--soft);color:var(--pri);border-radius:99px;padding:4px 6px 4px 10px;font-weight:600}
-.chip button{border:0;background:transparent;color:inherit;padding:0 4px;font-size:15px;line-height:1}
-.sep{color:var(--muted)}
-button.pri{background:#0b3d91;color:#fff;border-color:#0b3d91;font-weight:600}
+button{font:inherit;font-size:15px;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 14px;cursor:pointer;min-height:40px;touch-action:manipulation}
 button:disabled{opacity:.5;cursor:default}
-.wrap{overflow-x:auto;margin:0 -6px}
+.status{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;padding:5px 10px;border-radius:99px;background:var(--warn-bg);color:var(--warn)}
+.pill.ok{background:var(--ok-bg);color:var(--ok)}
+.status .grow{flex:1}
+.start-btn{display:block;width:100%;min-height:96px;font-size:28px;font-weight:900;letter-spacing:1px;background:#0a7a3d;color:#fff;border:0;border-radius:16px;box-shadow:0 4px 0 #075a2c}
+.start-btn:active{transform:translateY(3px);box-shadow:0 1px 0 #075a2c}
+.clock{display:flex;align-items:center;gap:16px}
+.cd{font-size:64px;font-weight:900;font-variant-numeric:tabular-nums;line-height:1;min-width:2.6em;text-align:center;padding:12px 10px;border-radius:14px;background:var(--soft)}
+.cd.soon{background:var(--soon)}
+.cd.go{background:var(--go);color:#fff}
+.who{flex:1;min-width:0}
+.who .lbl{font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;font-weight:700}
+.who .name{font-size:26px;font-weight:800;line-height:1.2;word-break:break-word}
+.who .then{font-size:14px;color:var(--muted);margin-top:4px}
+.elapsed{display:flex;justify-content:space-between;margin-top:12px;font-size:14px;color:var(--muted);font-variant-numeric:tabular-nums}
+.elapsed b{color:var(--ink);font-size:18px}
 table{width:100%;border-collapse:collapse;font-size:15px}
 th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
-th{font-size:12px;text-transform:uppercase;letter-spacing:.3px;color:var(--muted);user-select:none}
-th.s{cursor:pointer}
-th.s:hover{color:var(--ink)}
-th.act{color:var(--pri)}
-th .ind{display:inline-block;min-width:2.2em;font-size:11px}
+th{font-size:12px;text-transform:uppercase;letter-spacing:.3px;color:var(--muted)}
 td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
-td.pos{color:var(--muted);font-variant-numeric:tabular-nums}
-td.start{font-variant-numeric:tabular-nums;font-weight:600}
-.grip{cursor:grab;touch-action:none;color:var(--muted);font-size:18px;padding:0 6px;user-select:none;width:28px}
-tr.dragging{opacity:.6;background:var(--soft)}
-tr.brk td{background:var(--brk);color:var(--brk-ink);font-weight:600}
-tr.brk input{width:64px;padding:3px 6px}
-tr.brk button{padding:2px 8px}
+td.t{font-variant-numeric:tabular-nums;font-weight:600}
+tr.done td{color:var(--muted)}
+tr.next td{background:var(--soft)}
+tr.brk td{background:var(--brk);color:var(--brk-ink);font-weight:600;text-align:center}
 tr:last-child td{border-bottom:0}
-body.drag{cursor:grabbing;user-select:none}
+.wrap{overflow-x:auto;margin:0 -6px}
+.reset{display:flex;gap:8px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
+.danger{color:#b3261e;border-color:#e6b4b0}
+[hidden]{display:none!important}
 </style>
 </head>
 <body>
@@ -60,6 +65,233 @@ body.drag{cursor:grabbing;user-select:none}
   <nav><a href="./">Start List Creator</a><a class="on" href="timing.html">Race Timing</a></nav>
 </header>
 <main>
+  <div class="card status">
+    <span class="pill" id="offPill">Not saved for offline yet</span>
+    <span class="pill" id="racePill">Race not downloaded</span>
+    <span class="grow"></span>
+    <button id="dl">Download race</button>
+  </div>
+
+  <!-- before the race -->
+  <div id="pre">
+    <button class="start-btn" id="startBtn" disabled>Start race</button>
+    <p class="muted" style="text-align:center;margin:8px 0 14px" id="preMsg"></p>
+  </div>
+
+  <!-- during the race -->
+  <div id="live" hidden>
+    <div class="card">
+      <div class="clock">
+        <div class="cd" id="cd">--</div>
+        <div class="who">
+          <div class="lbl" id="whoLbl">Next start</div>
+          <div class="name" id="whoName">—</div>
+          <div class="then" id="whoThen"></div>
+        </div>
+      </div>
+      <div class="elapsed"><span>Race clock <b id="raceClock">0:00</b></span><span><b id="startedCount">0</b> of <span id="totalCount">0</span> started</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 style="margin-bottom:6px">Start order</h2>
+    <div class="wrap">
+      <table>
+        <thead><tr><th class="n">#</th><th>Start</th><th>Name</th><th class="n">Born</th><th class="n">Gender</th></tr></thead>
+        <tbody id="rows"><tr><td colspan="5" class="muted">No race downloaded yet.</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="reset" id="resetBox" hidden>
+    <span class="muted" id="resetMsg"></span>
+    <button class="danger" id="resetBtn">Reset race</button>
+  </div>
 </main>
+<script>
+"use strict";
+const SHEET = '1PqselA1x1xcKgkLQq2a1JQm8nFdDSZ_i21E_3XVotaA';
+const URL_CSV = `https://docs.google.com/spreadsheets/d/${SHEET}/gviz/tq?tqx=out:csv&headers=1&sheet=${encodeURIComponent('Start list')}`;
+const LS = 'xc.timing.v1';
+const LEAD_MS = 30000; // time from pressing Start race to the first athlete
+const $ = s => document.querySelector(s);
+
+// st.list: [{n, name, birth, gender, off}] off = seconds after the first start; breaks: {brk:'Break · 5 min', off}
+let st = { list: [], downloadedAt: 0, raceStart: 0 };
+try { st = Object.assign(st, JSON.parse(localStorage.getItem(LS)) || {}); } catch {}
+function save() { try { localStorage.setItem(LS, JSON.stringify(st)); } catch {} }
+
+/* ---------- helpers ---------- */
+const pad = n => String(n).padStart(2, '0');
+function toSec(hms) { const p = String(hms || '').split(':').map(Number); return (p[0] || 0) * 3600 + (p[1] || 0) * 60 + (p[2] || 0); }
+function dur(ms) { // 1:05, 12:30, 1:02:03
+  const s = Math.max(0, Math.floor(ms / 1000)), h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60;
+  return h ? h + ':' + pad(m) + ':' + pad(s % 60) : m + ':' + pad(s % 60);
+}
+function countdown(ms) { const s = Math.ceil(ms / 1000); return s >= 60 ? Math.floor(s / 60) + ':' + pad(s % 60) : String(s); }
+function clockTime(ms) { const d = new Date(ms); return pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()); }
+function parseCSV(t) {
+  const rows = []; let row = [], f = '', q = false;
+  for (let i = 0; i < t.length; i++) {
+    const c = t[i];
+    if (q) { if (c === '"') { if (t[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += c; }
+    else if (c === '"') q = true;
+    else if (c === ',') { row.push(f); f = ''; }
+    else if (c === '\n' || c === '\r') { if (c === '\r' && t[i + 1] === '\n') i++; row.push(f); rows.push(row); row = []; f = ''; }
+    else f += c;
+  }
+  if (f || row.length) { row.push(f); rows.push(row); }
+  return rows.filter(r => r.some(x => x.trim()));
+}
+const athletes = () => st.list.filter(x => !x.brk);
+const firstStart = () => st.raceStart + LEAD_MS;
+
+/* ---------- download ---------- */
+let downloading = false;
+async function download() {
+  if (st.raceStart) { flash('Reset the race before downloading a new start list.'); return; }
+  if (downloading) return;
+  downloading = true; $('#dl').disabled = true; $('#dl').textContent = 'Downloading…';
+  try {
+    const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 10000);
+    const res = await fetch(URL_CSV, { cache: 'no-store', signal: ctl.signal }); clearTimeout(to);
+    const text = await res.text();
+    if (!res.ok || /^\s*</.test(text)) throw new Error('sheet unavailable');
+    const rows = parseCSV(text); rows.shift();
+    const starters = rows.filter(r => r[0]);
+    if (!starters.length) throw new Error('no start list generated yet');
+    const base = toSec(starters[0][1]);
+    st.list = rows.map(r => r[0]
+      ? { n: r[0], name: r[2] || '', birth: r[3] || '', gender: r[4] || '', off: toSec(r[1]) - base }
+      : { brk: r[2] || 'Break', off: null });
+    st.downloadedAt = Date.now(); save();
+    flash('Start list downloaded ✓');
+  } catch (e) {
+    flash(navigator.onLine ? 'Download failed: ' + (e.name === 'AbortError' ? 'timed out' : e.message) : 'No connection. Using the saved copy.');
+  }
+  downloading = false; $('#dl').disabled = false; $('#dl').textContent = athletes().length ? 'Re-download race' : 'Download race';
+  render();
+}
+let flashTimer;
+function flash(msg) { $('#resetMsg').textContent = msg; $('#resetBox').hidden = false; clearTimeout(flashTimer); flashTimer = setTimeout(() => { $('#resetMsg').textContent = ''; render(); }, 4000); }
+
+/* ---------- race ---------- */
+function startRace() {
+  if (!athletes().length) return;
+  unlockAudio();
+  st.raceStart = Date.now(); save(); keepAwake(); render();
+}
+let resetArmed = false, resetTimer;
+$('#resetBtn').onclick = () => {
+  if (!resetArmed) { // two-tap confirm, no browser dialogs
+    resetArmed = true; $('#resetBtn').textContent = 'Tap again to reset';
+    resetTimer = setTimeout(() => { resetArmed = false; $('#resetBtn').textContent = 'Reset race'; }, 3000);
+    return;
+  }
+  clearTimeout(resetTimer); resetArmed = false; $('#resetBtn').textContent = 'Reset race';
+  st.raceStart = 0; save(); render();
+};
+$('#startBtn').onclick = startRace;
+$('#dl').onclick = download;
+
+/* ---------- sound + screen ---------- */
+let actx;
+function unlockAudio() { try { actx ||= new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume(); } catch {} }
+function beep(freq, dur) {
+  try {
+    unlockAudio();
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.type = 'square'; o.frequency.value = freq; g.gain.value = .2;
+    o.connect(g); g.connect(actx.destination); o.start(); o.stop(actx.currentTime + dur);
+  } catch {}
+}
+document.addEventListener('pointerdown', unlockAudio);
+let wakeLock = null;
+async function keepAwake() { try { if (st.raceStart && 'wakeLock' in navigator && !wakeLock) { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => wakeLock = null); } } catch {} }
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { keepAwake(); tick(); } });
+
+/* ---------- render ---------- */
+function td(text, cls) { const e = document.createElement('td'); e.textContent = text; if (cls) e.className = cls; return e; }
+function render() {
+  const has = athletes().length > 0, racing = !!st.raceStart;
+  // status pills
+  const rp = $('#racePill');
+  if (has) { rp.className = 'pill ok'; rp.textContent = `Race downloaded ✓ ${athletes().length} athletes · ${new Date(st.downloadedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`; }
+  else { rp.className = 'pill'; rp.textContent = 'Race not downloaded'; }
+  $('#dl').hidden = racing;
+  if (!downloading) $('#dl').textContent = has ? 'Re-download race' : 'Download race';
+  $('#pre').hidden = racing; $('#live').hidden = !racing;
+  $('#startBtn').disabled = !has;
+  $('#preMsg').textContent = has ? 'The first athlete starts 30 seconds after you press Start race.' : 'Download the race first. Do it while you have signal; after that no connection is needed.';
+  $('#resetBox').hidden = !racing && !$('#resetMsg').textContent;
+  $('#resetBtn').hidden = !racing;
+  // start order table
+  const tb = $('#rows'); tb.textContent = '';
+  for (const x of st.list) {
+    const tr = document.createElement('tr');
+    if (x.brk) { const c = td(x.brk); c.colSpan = 5; tr.className = 'brk'; tr.append(c); }
+    else { tr.dataset.off = x.off; tr.append(td(x.n, 'n'), td('+' + dur(x.off * 1000), 't'), td(x.name), td(x.birth, 'n'), td(x.gender, 'n')); }
+    tb.append(tr);
+  }
+  if (!st.list.length) tb.innerHTML = '<tr><td colspan="5" class="muted">No race downloaded yet. Tap Download race while you have signal.</td></tr>';
+  $('#totalCount').textContent = athletes().length;
+  tick();
+}
+
+let lastSec = null;
+function tick() {
+  if (!st.raceStart) return;
+  const now = Date.now(), t0 = firstStart(), list = athletes();
+  const started = list.filter(a => t0 + a.off * 1000 <= now);
+  const upcoming = list.filter(a => t0 + a.off * 1000 > now);
+  const justGone = started.filter(a => now - (t0 + a.off * 1000) < 3000); // show GO for 3 s
+  const cd = $('#cd');
+  if (justGone.length) {
+    cd.textContent = 'GO'; cd.className = 'cd go';
+    $('#whoLbl').textContent = 'Go!';
+    $('#whoName').textContent = justGone.map(a => '#' + a.n + ' ' + a.name).join(', ');
+  } else if (upcoming.length) {
+    const nx = upcoming[0], ms = t0 + nx.off * 1000 - now;
+    cd.textContent = countdown(ms); cd.className = 'cd' + (ms <= 10000 ? ' soon' : '');
+    $('#whoLbl').textContent = started.length ? 'Next start' : 'First start';
+    $('#whoName').textContent = '#' + nx.n + ' ' + nx.name;
+  } else {
+    cd.textContent = '✓'; cd.className = 'cd';
+    $('#whoLbl').textContent = 'All started'; $('#whoName').textContent = list.length + ' athletes on course';
+  }
+  const after = upcoming.slice(justGone.length ? 0 : 1, (justGone.length ? 0 : 1) + 2);
+  $('#whoThen').textContent = after.length ? 'Then ' + after.map(a => '#' + a.n + ' ' + a.name + ' (' + countdown(t0 + a.off * 1000 - now) + ')').join(', ') : '';
+  $('#raceClock').textContent = now < t0 ? '-' + countdown(t0 - now) : dur(now - t0);
+  $('#startedCount').textContent = started.length;
+  // beeps: 10 s warning, 3-2-1, long tone at GO
+  if (upcoming.length) {
+    const sec = Math.ceil((t0 + upcoming[0].off * 1000 - now) / 1000);
+    if (sec !== lastSec) { lastSec = sec; if (sec === 10 || (sec >= 1 && sec <= 3)) beep(880, .12); }
+  }
+  for (const a of justGone) if (!a._beeped) { a._beeped = true; beep(1320, .5); }
+  // table: grey out started, highlight next
+  const nextOff = upcoming[0]?.off;
+  for (const tr of $('#rows').children) {
+    if (tr.dataset.off === undefined) continue;
+    const off = +tr.dataset.off;
+    tr.classList.toggle('done', t0 + off * 1000 <= now);
+    tr.classList.toggle('next', off === nextOff);
+  }
+}
+setInterval(tick, 200);
+
+/* ---------- offline ---------- */
+function offlineReady() { const p = $('#offPill'); p.className = 'pill ok'; p.textContent = 'Saved for offline ✓'; }
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').then(() => navigator.serviceWorker.ready).then(reg => {
+    if (navigator.serviceWorker.controller) offlineReady();
+    else navigator.serviceWorker.addEventListener('controllerchange', offlineReady, { once: true });
+  }).catch(() => { $('#offPill').textContent = 'Offline not supported in this browser'; });
+}
+try { navigator.storage?.persist?.(); } catch {}
+
+render();
+if (st.raceStart) keepAwake();
+</script>
 </body>
 </html>
