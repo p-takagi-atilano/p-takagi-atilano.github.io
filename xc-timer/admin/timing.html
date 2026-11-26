@@ -112,13 +112,6 @@ td.rank{font-weight:800}
       </div>
       <div class="elapsed"><span>Race clock <b id="raceClock">0:00</b></span><span><b id="startedCount">0</b> of <span id="totalCount">0</span> started</span></div>
     </div>
-    <button class="unkbtn" id="unkBtn">Unknown athlete crossed</button>
-  </div>
-
-  <!-- times recorded with the Unknown button, waiting to be matched to an athlete -->
-  <div class="card unkcard" id="unkCard" hidden>
-    <h2 style="margin-bottom:6px">Unassigned times (<span id="unkCount">0</span>)</h2>
-    <div id="unkList"></div>
   </div>
 
   <!-- after the race -->
@@ -146,6 +139,14 @@ td.rank{font-weight:800}
         <tbody id="rows"><tr><td colspan="7" class="muted">No race downloaded yet.</td></tr></tbody>
       </table>
     </div>
+  </div>
+
+  <button class="unkbtn" id="unkBtn" hidden>Unknown athlete crossed</button>
+
+  <!-- times recorded with the Unknown button, waiting to be matched to an athlete -->
+  <div class="card unkcard" id="unkCard" hidden>
+    <h2 style="margin-bottom:6px">Unassigned times (<span id="unkCount">0</span>)</h2>
+    <div id="unkList"></div>
   </div>
 
   <div class="reset" id="resetBox" hidden>
@@ -426,6 +427,7 @@ function render() {
   $('#resetBox').hidden = !racing && !$('#resetMsg').textContent;
   $('#resetBtn').hidden = !racing;
   $('#endBtn').hidden = !live;
+  $('#unkBtn').hidden = !live;
   $('#orderCard').hidden = !!st.ended; // start order isn't needed once the race is over
   renderResults(live);
   renderUnknown();
