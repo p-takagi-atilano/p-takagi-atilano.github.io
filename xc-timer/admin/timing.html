@@ -64,6 +64,7 @@ tr:last-child td{border-bottom:0}
 .wrap{overflow-x:auto;margin:0 -6px}
 .reset{display:flex;gap:8px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
 .danger{color:#b3261e;border-color:#e6b4b0}
+.upbtn{background:#0b3d91;color:#fff;border-color:#0b3d91;font-weight:700}
 .endbtn{background:#0d1420;color:#fff;border-color:#0d1420;font-weight:700;min-height:48px;padding:8px 20px}
 @media (prefers-color-scheme:dark){.endbtn{background:#e8edf5;color:#0d1420;border-color:#e8edf5}}
 td.rank{font-weight:800}
@@ -111,7 +112,7 @@ td.rank{font-weight:800}
       <span class="grow"></span>
       <span class="pill ok">Saved on phone ✓</span>
       <span class="pill" id="upPill"></span>
-      <button id="upBtn">Upload</button>
+      <button id="upBtn" class="upbtn">Upload to Sheet</button>
     </div>
     <div class="wrap">
       <table>
@@ -121,7 +122,7 @@ td.rank{font-weight:800}
     </div>
   </div>
 
-  <div class="card">
+  <div class="card" id="orderCard">
     <h2 style="margin-bottom:6px">Start order</h2>
     <div class="wrap">
       <table>
@@ -341,6 +342,7 @@ function render() {
   $('#resetBox').hidden = !racing && !$('#resetMsg').textContent;
   $('#resetBtn').hidden = !racing;
   $('#endBtn').hidden = !live;
+  $('#orderCard').hidden = !!st.ended; // start order isn't needed once the race is over
   renderResults(live);
   // start order table
   const tb = $('#rows'); tb.textContent = '';
