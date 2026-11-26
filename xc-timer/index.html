@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Alder Point Time Trial</title>
+<meta name="theme-color" content="#0b3d91">
+<style>
+:root{--bg:#f4f6f9;--card:#fff;--ink:#0d1420;--muted:#5a6575;--line:#d5dbe4;--pri:#0b3d91;--soft:#e8eef8}
+@media (prefers-color-scheme:dark){:root{--bg:#0e131b;--card:#161d28;--ink:#e8edf5;--muted:#9aa6b8;--line:#2a3445;--pri:#8fb3ff;--soft:#1f2a3c}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+header{background:#0b3d91;color:#fff;padding:calc(20px + env(safe-area-inset-top)) 16px 20px}
+header h1{margin:0;font-size:24px}
+header p{margin:6px 0 0;opacity:.85;font-size:14px}
+main{max-width:640px;margin:0 auto;padding:16px}
+.reg{display:block;text-align:center;background:#d62828;color:#fff;text-decoration:none;font-weight:800;font-size:20px;padding:16px;border-radius:14px;margin:0 0 16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+h2{font-size:17px;margin:0}
+.muted{color:var(--muted);font-size:13px}
+table{width:100%;border-collapse:collapse;font-size:15px}
+th,td{text-align:left;padding:9px 6px;border-bottom:1px solid var(--line)}
+th{font-size:12px;text-transform:uppercase;letter-spacing:.3px;color:var(--muted)}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+tr:last-child td{border-bottom:0}
+.num{display:inline-block;min-width:1.8em;color:var(--muted)}
+</style>
+</head>
+<body>
+<header>
+  <h1>Alder Point Time Trial</h1>
+  <p>Team XC ski time trial · Silver Star · 2 loops · interval start</p>
+</header>
+<main>
+  <a class="reg" href="https://docs.google.com/forms/d/e/1FAIpQLSdtr5MrfNsVe-3TSQ61Qxk4jsclQG5V2u6C5aetgGZZ_U9YAg/viewform" target="_blank" rel="noopener">Register</a>
+  <div class="card">
+    <div class="top"><h2>Registered (<span id="count">…</span>)</h2><span class="muted" id="upd"></span></div>
+    <table>
+      <thead><tr><th>Name</th><th class="n">Born</th><th class="n">Gender</th></tr></thead>
+      <tbody id="rows"><tr><td colspan="3" class="muted">Loading…</td></tr></tbody>
+    </table>
+  </div>
+  <p class="muted">The start list will be posted here before the race.</p>
+</main>
+<script>
+"use strict";
+const SHEET = '1PqselA1x1xcKgkLQq2a1JQm8nFdDSZ_i21E_3XVotaA';
+const URL_CSV = `https://docs.google.com/spreadsheets/d/${SHEET}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent('Form Responses 1')}`;
+const $ = s => document.querySelector(s);
+
+function parseCSV(t) {
+  const rows = []; let row = [], f = '', q = false;
+  for (let i = 0; i < t.length; i++) {
+    const c = t[i];
+    if (q) { if (c === '"') { if (t[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += c; }
+    else if (c === '"') q = true;
+    else if (c === ',') { row.push(f); f = ''; }
+    else if (c === '\n' || c === '\r') { if (c === '\r' && t[i + 1] === '\n') i++; row.push(f); rows.push(row); row = []; f = ''; }
+    else f += c;
+  }
+  if (f || row.length) { row.push(f); rows.push(row); }
+  return rows.filter(r => r.some(x => x.trim()));
+}
+function cell(text, cls) { const td = document.createElement('td'); td.textContent = text; if (cls) td.className = cls; return td; }
+
+async function load() {
+  try {
+    const res = await fetch(URL_CSV, { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    if (/^\s*</.test(text)) throw new Error('sheet not shared');
+    const rows = parseCSV(text);
+    const h = (rows.shift() || []).map(x => x.trim().toLowerCase());
+    const iN = h.indexOf('name'), iB = h.findIndex(x => x.includes('birth')), iG = h.indexOf('gender');
+    // one entry per name; a later submission replaces an earlier one
+    const byName = new Map();
+    for (const r of rows) { const n = (r[iN] || '').trim(); if (n) byName.set(n.toLowerCase(), r); }
+    const list = [...byName.values()];
+    const tb = $('#rows'); tb.textContent = '';
+    list.forEach((r, i) => {
+      const tr = document.createElement('tr');
+      const name = cell(''); const num = document.createElement('span'); num.className = 'num'; num.textContent = (i + 1) + '.';
+      name.append(num, ' ' + r[iN].trim());
+      tr.append(name, cell(iB >= 0 ? r[iB] : '', 'n'), cell(iG >= 0 ? r[iG] : '', 'n'));
+      tb.append(tr);
+    });
+    if (!list.length) tb.innerHTML = '<tr><td colspan="3" class="muted">Nobody yet. Be the first!</td></tr>';
+    $('#count').textContent = list.length;
+    $('#upd').textContent = 'updated ' + new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  } catch (e) {
+    $('#count').textContent = '?';
+    $('#rows').innerHTML = '<tr><td colspan="3" class="muted">Couldn’t load the list right now.</td></tr>';
+  }
+}
+load(); setInterval(load, 30000);
+</script>
+</body>
+</html>
