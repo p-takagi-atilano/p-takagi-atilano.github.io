@@ -49,7 +49,14 @@ th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);white-
 th{font-size:12px;text-transform:uppercase;letter-spacing:.3px;color:var(--muted)}
 td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
 td.t{font-variant-numeric:tabular-nums;font-weight:600}
-tr.done td{color:var(--muted)}
+tr.fin td{color:var(--muted)}
+td.lap{font-variant-numeric:tabular-nums;font-weight:600}
+td.lap.running{color:var(--pri);font-weight:500}
+td.act{text-align:right;padding:4px 6px}
+.lapbtn{min-width:72px;min-height:48px;font-size:17px;font-weight:800;background:#d62828;color:#fff;border:0;border-radius:10px}
+.lapbtn:active{transform:translateY(2px)}
+.lapbtn:disabled{background:var(--soft);color:var(--muted);opacity:1}
+@media (max-width:600px){.opt{display:none}th,td{padding:8px 4px}}
 tr.next td{background:var(--soft)}
 tr.brk td{background:var(--brk);color:var(--brk-ink);font-weight:600;text-align:center}
 tr:last-child td{border-bottom:0}
@@ -97,8 +104,8 @@ tr:last-child td{border-bottom:0}
     <h2 style="margin-bottom:6px">Start order</h2>
     <div class="wrap">
       <table>
-        <thead><tr><th class="n">#</th><th>Start</th><th>Name</th><th class="n">Born</th><th class="n">Gender</th></tr></thead>
-        <tbody id="rows"><tr><td colspan="5" class="muted">No race downloaded yet.</td></tr></tbody>
+        <thead><tr><th class="n">#</th><th>Start</th><th>Name</th><th class="n opt">Born</th><th class="n opt">Gender</th><th class="n">Lap 1</th><th class="n">Lap 2</th><th></th></tr></thead>
+        <tbody id="rows"><tr><td colspan="8" class="muted">No race downloaded yet.</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -117,8 +124,10 @@ const LEAD_MS = 30000; // time from pressing Start race to the first athlete
 const $ = s => document.querySelector(s);
 
 // st.list: [{n, name, birth, gender, off}] off = seconds after the first start; breaks: {brk:'Break · 5 min', off}
-let st = { list: [], downloadedAt: 0, raceStart: 0 };
+let st = { list: [], downloadedAt: 0, raceStart: 0, laps: {} };
+const LAPS = 2;
 try { st = Object.assign(st, JSON.parse(localStorage.getItem(LS)) || {}); } catch {}
+st.laps ||= {};
 function save() { try { localStorage.setItem(LS, JSON.stringify(st)); } catch {} }
 
 /* ---------- helpers ---------- */
@@ -127,6 +136,10 @@ function toSec(hms) { const p = String(hms || '').split(':').map(Number); return
 function dur(ms) { // 1:05, 12:30, 1:02:03
   const s = Math.max(0, Math.floor(ms / 1000)), h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60;
   return h ? h + ':' + pad(m) + ':' + pad(s % 60) : m + ':' + pad(s % 60);
+}
+function lapTime(ms) { // 9:41.3
+  const t = Math.max(0, Math.floor(ms / 100)), s = Math.floor(t / 10);
+  return dur(s * 1000) + '.' + (t % 10);
 }
 function countdown(ms) { const s = Math.ceil(ms / 1000); return s >= 60 ? Math.floor(s / 60) + ':' + pad(s % 60) : String(s); }
 function clockTime(ms) { const d = new Date(ms); return pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()); }
@@ -189,9 +202,23 @@ $('#resetBtn').onclick = () => {
     return;
   }
   clearTimeout(resetTimer); resetArmed = false; $('#resetBtn').textContent = 'Reset race';
-  st.raceStart = 0; save(); render();
+  st.raceStart = 0; st.laps = {}; save(); render();
 };
 $('#startBtn').onclick = startRace;
+
+// record the next lap for an athlete
+function lapPress(a) {
+  if (!st.raceStart) return;
+  const now = Date.now(), start = firstStart() + a.off * 1000;
+  const laps = st.laps[a.n] ||= [];
+  if (now < start || laps.length >= LAPS) return;
+  const prev = laps.length ? laps[laps.length - 1] : start;
+  if (now - prev < 5000) return; // ignore accidental double taps
+  laps.push(now); save();
+  try { navigator.vibrate?.(40); } catch {}
+  beep(1200, .08);
+  tick();
+}
 $('#dl').onclick = download;
 
 /* ---------- sound + screen ---------- */
@@ -229,11 +256,17 @@ function render() {
   const tb = $('#rows'); tb.textContent = '';
   for (const x of st.list) {
     const tr = document.createElement('tr');
-    if (x.brk) { const c = td(x.brk); c.colSpan = 5; tr.className = 'brk'; tr.append(c); }
-    else { tr.dataset.off = x.off; tr.append(td(x.n, 'n'), td('+' + dur(x.off * 1000), 't'), td(x.name), td(x.birth, 'n'), td(x.gender, 'n')); }
+    if (x.brk) { const c = td(x.brk); c.colSpan = 8; tr.className = 'brk'; tr.append(c); }
+    else {
+      tr.dataset.off = x.off; tr.dataset.n = x.n;
+      const btn = document.createElement('button'); btn.className = 'lapbtn'; btn.textContent = 'Lap';
+      btn.onclick = () => lapPress(x);
+      const act = td(''); act.className = 'act'; act.append(btn);
+      tr.append(td(x.n, 'n'), td('+' + dur(x.off * 1000), 't'), td(x.name), td(x.birth, 'n opt'), td(x.gender, 'n opt'), td('', 'n lap'), td('', 'n lap'), act);
+    }
     tb.append(tr);
   }
-  if (!st.list.length) tb.innerHTML = '<tr><td colspan="5" class="muted">No race downloaded yet. Tap Download race while you have signal.</td></tr>';
+  if (!st.list.length) tb.innerHTML = '<tr><td colspan="8" class="muted">No race downloaded yet. Tap Download race while you have signal.</td></tr>';
   $('#totalCount').textContent = athletes().length;
   tick();
 }
@@ -257,7 +290,8 @@ function tick() {
     $('#whoName').textContent = '#' + nx.n + ' ' + nx.name;
   } else {
     cd.textContent = '✓'; cd.className = 'cd';
-    $('#whoLbl').textContent = 'All started'; $('#whoName').textContent = list.length + ' athletes on course';
+    const fin = list.filter(x => (st.laps[x.n] || []).length >= LAPS).length;
+    $('#whoLbl').textContent = 'All started'; $('#whoName').textContent = fin === list.length ? 'All finished' : (list.length - fin) + ' on course · ' + fin + ' finished';
   }
   const after = upcoming.slice(justGone.length ? 0 : 1, (justGone.length ? 0 : 1) + 2);
   $('#whoThen').textContent = after.length ? 'Then ' + after.map(a => '#' + a.n + ' ' + a.name + ' (' + countdown(t0 + a.off * 1000 - now) + ')').join(', ') : '';
@@ -269,12 +303,22 @@ function tick() {
     if (sec !== lastSec) { lastSec = sec; if (sec === 10 || (sec >= 1 && sec <= 3)) beep(880, .12); }
   }
   for (const a of justGone) if (!a._beeped) { a._beeped = true; beep(1320, .5); }
-  // table: grey out started, highlight next
+  // table: lap times (current lap keeps counting), highlight next starter, grey out finished
   const nextOff = upcoming[0]?.off;
   for (const tr of $('#rows').children) {
     if (tr.dataset.off === undefined) continue;
-    const off = +tr.dataset.off;
-    tr.classList.toggle('done', t0 + off * 1000 <= now);
+    const off = +tr.dataset.off, start = t0 + off * 1000, laps = st.laps[tr.dataset.n] || [];
+    const cells = tr.querySelectorAll('td.lap'), btn = tr.querySelector('.lapbtn');
+    for (let k = 0; k < LAPS; k++) {
+      const from = k ? laps[k - 1] : start, c = cells[k];
+      if (k < laps.length) { c.textContent = lapTime(laps[k] - from); c.classList.remove('running'); }
+      else if (k === laps.length && now >= start) { c.textContent = dur(now - from); c.classList.add('running'); }
+      else { c.textContent = ''; c.classList.remove('running'); }
+    }
+    const fin = laps.length >= LAPS;
+    btn.disabled = now < start || fin;
+    btn.textContent = fin ? '✓' : 'Lap';
+    tr.classList.toggle('fin', fin);
     tr.classList.toggle('next', off === nextOff);
   }
 }
