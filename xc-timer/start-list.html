@@ -88,6 +88,7 @@ function loadScript(src) {
 document.getElementById('pdfBtn').onclick = async () => {
   const btn = document.getElementById('pdfBtn');
   btn.disabled = true; btn.textContent = 'Preparing…';
+  saveOffline();
   try {
     if (!window.jspdf) {
       await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
@@ -115,12 +116,30 @@ document.getElementById('pdfBtn').onclick = async () => {
   }
   btn.disabled = false;
 };
+// offline copy, saved quietly when someone downloads the PDF
+const SAVE_KEY = 'xc.startlist.saved';
+function savedCopy() { try { return JSON.parse(localStorage.getItem(SAVE_KEY)); } catch { return null; } }
+function saveOffline() {
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify({ rows: lastRows, savedAt: Date.now() })); } catch {}
+  try { navigator.serviceWorker?.register('sl-sw.js', { scope: './start-list' }).catch(() => {}); } catch {}
+}
 async function load() {
   try {
     const res = await fetch(URL_CSV, { cache: 'no-store' });
     const text = await res.text();
     if (!res.ok || /^\s*</.test(text)) throw new Error('unavailable');
     const rows = parseCSV(text); rows.shift(); // header
+    showRows(rows);
+    if (savedCopy()) saveOffline(); // keep this device's offline copy current
+  } catch {
+    // no signal: use this device's saved copy if there is one, else Coming soon
+    const saved = savedCopy();
+    if (saved && document.getElementById('list').hidden) showRows(saved.rows);
+    document.getElementById('loading').hidden = true;
+    if (document.getElementById('list').hidden) document.getElementById('soon').hidden = false;
+  }
+}
+function showRows(rows) {
     lastRows = rows;
     const tb = document.getElementById('rows'); tb.textContent = '';
     for (const r of rows) {
@@ -133,11 +152,6 @@ async function load() {
     document.getElementById('loading').hidden = true;
     document.getElementById('soon').hidden = has;
     document.getElementById('list').hidden = !has;
-  } catch {
-    // couldn't reach the Sheet: fall back to Coming soon unless a list is already showing
-    document.getElementById('loading').hidden = true;
-    if (document.getElementById('list').hidden) document.getElementById('soon').hidden = false;
-  }
 }
 load(); setInterval(load, 60000);
 </script>
