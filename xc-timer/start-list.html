@@ -32,6 +32,9 @@ tr:last-child td{border-bottom:0}
 .soon{text-align:center;padding:48px 16px}
 .soon h2{font-size:22px;margin:0 0 6px}
 [hidden]{display:none!important}
+.loading{display:flex;justify-content:center;padding:48px 16px}
+.spin{width:28px;height:28px;border:3px solid var(--line);border-top-color:var(--pri);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
 td.start{font-variant-numeric:tabular-nums;font-weight:600}
 tr.brk td{background:#fff4dc;color:#8a5a00;font-weight:600;text-align:center}
 @media (prefers-color-scheme:dark){tr.brk td{background:#2e2614;color:#f0c46a}}
@@ -43,7 +46,8 @@ tr.brk td{background:#fff4dc;color:#8a5a00;font-weight:600;text-align:center}
   <nav><a href="./">Registration</a><a class="on" href="start-list.html">Start list</a><a href="results.html">Results</a></nav>
 </header>
 <main>
-  <div class="card soon" id="soon">
+  <div class="card loading" id="loading"><span class="spin"></span></div>
+  <div class="card soon" id="soon" hidden>
     <h2>Coming soon</h2>
     <p class="muted">The start list will be posted here before the race.</p>
   </div>
@@ -86,9 +90,14 @@ async function load() {
       tb.append(tr);
     }
     const has = rows.some(r => r[0]);
+    document.getElementById('loading').hidden = true;
     document.getElementById('soon').hidden = has;
     document.getElementById('list').hidden = !has;
-  } catch {}
+  } catch {
+    // couldn't reach the Sheet: fall back to Coming soon unless a list is already showing
+    document.getElementById('loading').hidden = true;
+    if (document.getElementById('list').hidden) document.getElementById('soon').hidden = false;
+  }
 }
 load(); setInterval(load, 60000);
 </script>
