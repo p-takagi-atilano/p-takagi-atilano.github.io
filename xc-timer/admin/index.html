@@ -29,6 +29,8 @@ input{font:inherit;color:var(--ink);background:var(--card);border:1px solid var(
 .chip{display:inline-flex;align-items:center;gap:6px;background:var(--soft);color:var(--pri);border-radius:99px;padding:4px 6px 4px 10px;font-weight:600}
 .chip button{border:0;background:transparent;color:inherit;padding:0 4px;font-size:15px;line-height:1}
 .sep{color:var(--muted)}
+button.pri{background:#0b3d91;color:#fff;border-color:#0b3d91;font-weight:600}
+button:disabled{opacity:.5;cursor:default}
 .wrap{overflow-x:auto;margin:0 -6px}
 table{width:100%;border-collapse:collapse;font-size:15px}
 th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
@@ -58,7 +60,6 @@ body.drag{cursor:grabbing;user-select:none}
     <div class="settings">
       <label>Race start time (first athlete)<input type="time" id="first" step="1"></label>
       <label>Interval (sec)<input type="number" id="interval" min="0" inputmode="numeric"></label>
-      <label>Break length (min)<input type="number" id="brkLen" min="1" inputmode="numeric"></label>
     </div>
   </div>
 
@@ -69,6 +70,7 @@ body.drag{cursor:grabbing;user-select:none}
       <span>
         <button id="addBreak">+ Break</button>
         <button id="refresh">Refresh</button>
+        <button id="generate" class="pri">Generate</button>
       </span>
     </div>
     <div class="sortbar" id="sortbar"></div>
@@ -79,11 +81,6 @@ body.drag{cursor:grabbing;user-select:none}
       </table>
     </div>
   </div>
-  <p class="muted">
-    Sorting: click a column to add it to the sort, click again to flip it, and a third time to remove it. The first column sorts first and later ones break ties.<br>
-    Reordering: drag ⠿ to move a racer or a break. Dragging switches the list to a custom order. “+ Break” adds a break at the end; drag it into place. A break replaces the normal interval between the racers on either side.<br>
-    This order is saved in this browser only, for now.
-  </p>
 </main>
 <script>
 "use strict";
@@ -101,7 +98,9 @@ const COLS = [
 ];
 
 // state saved in this browser
-let st = { first: '10:00:00', interval: 30, brkLen: 5, sort: [], order: [] };
+let st = { first: '10:00:00', interval: 30, sort: [], order: [] };
+const BREAK_MIN = 5; // default length of a new break
+const WEB_APP = 'https://script.google.com/macros/s/AKfycbz0TD1XClbOVJHJrqoy9Ee8OCRmnVakOLIb4sq3ddvQK-bLrRpPon-XgV5WuZCR7yg1aQ/exec';
 // order: [{t:'r', id:<lowercased name>} | {t:'b', id, min}]
 try { st = Object.assign(st, JSON.parse(localStorage.getItem(LS)) || {}); } catch {}
 const save = () => { try { localStorage.setItem(LS, JSON.stringify(st)); } catch {} };
@@ -179,7 +178,7 @@ function startTimes() {
 /* ---------- render ---------- */
 function el(tag, props = {}, ...kids) { const e = document.createElement(tag); Object.assign(e, props); e.append(...kids); return e; }
 function render() {
-  $('#first').value = st.first; $('#interval').value = st.interval; $('#brkLen').value = st.brkLen;
+  $('#first').value = st.first; $('#interval').value = st.interval;
   // header
   const head = $('#head'); head.textContent = '';
   head.append(el('th'), el('th', { textContent: '#' }), el('th', { textContent: 'Start' }));
@@ -267,9 +266,29 @@ function endDrag() {
 /* ---------- controls ---------- */
 $('#first').onchange = e => { st.first = e.target.value || '10:00:00'; save(); render(); };
 $('#interval').onchange = e => { st.interval = Math.max(0, +e.target.value || 0); save(); render(); };
-$('#brkLen').onchange = e => { st.brkLen = Math.max(1, +e.target.value || 5); save(); render(); };
-$('#addBreak').onclick = () => { st.order.push({ t: 'b', id: uid(), min: st.brkLen }); save(); render(); };
+$('#addBreak').onclick = () => { st.order.push({ t: 'b', id: uid(), min: BREAK_MIN }); save(); render(); };
 $('#refresh').onclick = load;
+
+// write the current start list to the Sheet's "Start list" tab (replaces whatever is there)
+$('#generate').onclick = async () => {
+  const btn = $('#generate'), times = startTimes(); let n = 0;
+  const rows = st.order.map(it => {
+    if (it.t === 'b') return ['', '', 'Break · ' + it.min + ' min', '', ''];
+    const r = racers.get(it.id);
+    return [String(++n), fmt(times.get(it)), r.name, String(r.birth ?? ''), r.gender || ''];
+  });
+  if (!n) { $('#upd').textContent = 'nothing to generate'; return; }
+  btn.disabled = true; $('#upd').textContent = 'generating…';
+  try {
+    const res = await fetch(WEB_APP, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ rows }) });
+    const out = await res.json();
+    if (!out.ok) throw new Error('not saved');
+    $('#upd').textContent = 'published ' + out.rows + ' rows at ' + new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + ' ✓';
+  } catch (e) {
+    $('#upd').textContent = 'generate failed (' + e.message + ')';
+  }
+  btn.disabled = false;
+};
 
 async function load() {
   $('#upd').textContent = 'loading…';
