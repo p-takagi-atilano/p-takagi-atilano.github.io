@@ -31,6 +31,18 @@ tr:last-child td{border-bottom:0}
 .num{display:inline-block;min-width:1.8em;color:var(--muted)}
 .soon{text-align:center;padding:48px 16px}
 .soon h2{font-size:22px;margin:0 0 6px}
+[hidden]{display:none!important}
+td.rank{font-weight:800}
+td.t{font-variant-numeric:tabular-nums;font-weight:600}
+.wrap{overflow-x:auto;margin:0 -6px}
+#pdfBtn{font:inherit;font-size:14px;font-weight:600;color:#fff;background:#0b3d91;border:0;border-radius:8px;padding:8px 14px;cursor:pointer}
+#pdfBtn:disabled{opacity:.6}
+.loading{display:flex;justify-content:center;padding:48px 16px}
+.spin{width:28px;height:28px;border:3px solid var(--line);border-top-color:var(--pri);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+td.start{font-variant-numeric:tabular-nums;font-weight:600}
+tr.brk td{background:#fff4dc;color:#8a5a00;font-weight:600;text-align:center}
+@media (prefers-color-scheme:dark){tr.brk td{background:#2e2614;color:#f0c46a}}
 </style>
 </head>
 <body>
@@ -39,10 +51,53 @@ tr:last-child td{border-bottom:0}
   <nav><a href="./">Registration</a><a href="start-list.html">Start list</a><a class="on" href="results.html">Results</a></nav>
 </header>
 <main>
-  <div class="card soon">
+  <div class="card loading" id="loading"><span class="spin"></span></div>
+  <div class="card soon" id="soon" hidden>
     <h2>Coming soon</h2>
     <p class="muted">Results will be posted here after the race.</p>
   </div>
+  <div class="card" id="list" hidden>
+    <div class="wrap">
+      <table>
+        <thead><tr><th class="n">Rank</th><th class="n">#</th><th>Name</th><th>Team</th><th class="n">Lap 1</th><th class="n">Lap 2</th><th class="n">Total</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </div>
 </main>
+<script>
+"use strict";
+const SHEET = '1PqselA1x1xcKgkLQq2a1JQm8nFdDSZ_i21E_3XVotaA';
+const URL_CSV = `https://docs.google.com/spreadsheets/d/${SHEET}/gviz/tq?tqx=out:csv&headers=1&sheet=${encodeURIComponent('Final results')}`;
+function parseCSV(t) {
+  const rows = []; let row = [], f = '', q = false;
+  for (let i = 0; i < t.length; i++) {
+    const c = t[i];
+    if (q) { if (c === '"') { if (t[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += c; }
+    else if (c === '"') q = true;
+    else if (c === ',') { row.push(f); f = ''; }
+    else if (c === '\n' || c === '\r') { if (c === '\r' && t[i + 1] === '\n') i++; row.push(f); rows.push(row); row = []; f = ''; }
+    else f += c;
+  }
+  if (f || row.length) { row.push(f); rows.push(row); }
+  return rows.filter(r => r.some(x => x.trim()));
+}
+function td(text, cls) { const e = document.createElement('td'); e.textContent = text; if (cls) e.className = cls; return e; }
+// shows results only once the race is finalized (the "Final results" tab has rows); otherwise Coming soon
+async function load() {
+  let rows = [];
+  try {
+    const res = await fetch(URL_CSV, { cache: 'no-store' });
+    const text = await res.text();
+    if (res.ok && !/^\s*</.test(text)) { const all = parseCSV(text); if (all.length && all[0][0] === 'Rank') rows = all.slice(1); }
+  } catch {}
+  const tb = document.getElementById('rows'); tb.textContent = '';
+  for (const x of rows) { const tr = document.createElement('tr'); tr.append(td(x[0], 'n rank'), td(x[1], 'n'), td(x[2]), td(x[3]), td(x[4], 'n t'), td(x[5], 'n t'), td(x[6], 'n t')); tb.append(tr); }
+  document.getElementById('loading').hidden = true;
+  document.getElementById('soon').hidden = rows.length > 0;
+  document.getElementById('list').hidden = rows.length === 0;
+}
+load(); setInterval(load, 60000);
+</script>
 </body>
 </html>
