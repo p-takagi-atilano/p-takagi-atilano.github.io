@@ -74,7 +74,6 @@ tr:last-child td{border-bottom:0}
 </header>
 <main>
   <div class="card status">
-    <span class="pill" id="offPill">Not saved for offline yet</span>
     <span class="pill" id="racePill">Race not downloaded</span>
     <span class="grow"></span>
     <button id="dl">Download race</button>
@@ -242,9 +241,11 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 function td(text, cls) { const e = document.createElement('td'); e.textContent = text; if (cls) e.className = cls; return e; }
 function render() {
   const has = athletes().length > 0, racing = !!st.raceStart;
-  // status pills
+  // one status: is this phone ready to run the race with no signal?
   const rp = $('#racePill');
-  if (has) { rp.className = 'pill ok'; rp.textContent = `Race downloaded ✓ ${athletes().length} athletes · ${new Date(st.downloadedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`; }
+  const when = new Date(st.downloadedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+  if (has && pageSaved) { rp.className = 'pill ok'; rp.textContent = `Ready offline ✓ ${athletes().length} athletes · downloaded ${when}`; }
+  else if (has) { rp.className = 'pill'; rp.textContent = `${athletes().length} athletes downloaded, but the page isn't saved for offline yet. Reload once with signal.`; }
   else { rp.className = 'pill'; rp.textContent = 'Race not downloaded'; }
   $('#dl').hidden = racing;
   if (!downloading) $('#dl').textContent = has ? 'Re-download race' : 'Download race';
@@ -327,12 +328,14 @@ function tick() {
 setInterval(tick, 200);
 
 /* ---------- offline ---------- */
-function offlineReady() { const p = $('#offPill'); p.className = 'pill ok'; p.textContent = 'Saved for offline ✓'; }
+// the page counts as saved once the offline cache holds it (true even after a hard refresh)
+let pageSaved = false;
+async function checkSaved() {
+  try { pageSaved = !!(await caches.match(new URL('timing.html', location.href).href)); } catch { pageSaved = false; }
+  render();
+}
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').then(() => navigator.serviceWorker.ready).then(reg => {
-    if (navigator.serviceWorker.controller) offlineReady();
-    else navigator.serviceWorker.addEventListener('controllerchange', offlineReady, { once: true });
-  }).catch(() => { $('#offPill').textContent = 'Offline not supported in this browser'; });
+  navigator.serviceWorker.register('sw.js').then(() => navigator.serviceWorker.ready).then(checkSaved).catch(checkSaved);
 }
 try { navigator.storage?.persist?.(); } catch {}
 
