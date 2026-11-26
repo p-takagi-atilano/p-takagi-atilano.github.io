@@ -64,6 +64,9 @@ tr:last-child td{border-bottom:0}
 .wrap{overflow-x:auto;margin:0 -6px}
 .reset{display:flex;gap:8px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
 .danger{color:#b3261e;border-color:#e6b4b0}
+.endbtn{background:#0d1420;color:#fff;border-color:#0d1420;font-weight:700;min-height:48px;padding:8px 20px}
+@media (prefers-color-scheme:dark){.endbtn{background:#e8edf5;color:#0d1420;border-color:#e8edf5}}
+td.rank{font-weight:800}
 [hidden]{display:none!important}
 </style>
 </head>
@@ -101,6 +104,23 @@ tr:last-child td{border-bottom:0}
     </div>
   </div>
 
+  <!-- after the race -->
+  <div class="card" id="resultsCard" hidden>
+    <div class="status" style="margin-bottom:8px">
+      <h2 id="resTitle">Results</h2>
+      <span class="grow"></span>
+      <span class="pill ok">Saved on phone ✓</span>
+      <span class="pill" id="upPill"></span>
+      <button id="upBtn">Upload</button>
+    </div>
+    <div class="wrap">
+      <table>
+        <thead><tr><th class="n">Rank</th><th class="n">#</th><th>Name</th><th>Team</th><th class="n">Lap 1</th><th class="n">Lap 2</th><th class="n">Total</th></tr></thead>
+        <tbody id="resRows"></tbody>
+      </table>
+    </div>
+  </div>
+
   <div class="card">
     <h2 style="margin-bottom:6px">Start order</h2>
     <div class="wrap">
@@ -113,6 +133,7 @@ tr:last-child td{border-bottom:0}
 
   <div class="reset" id="resetBox" hidden>
     <span class="muted" id="resetMsg"></span>
+    <button class="endbtn" id="endBtn">End race</button>
     <button class="danger" id="resetBtn">Reset race</button>
   </div>
 </main>
@@ -121,11 +142,13 @@ tr:last-child td{border-bottom:0}
 const SHEET = '1PqselA1x1xcKgkLQq2a1JQm8nFdDSZ_i21E_3XVotaA';
 const URL_CSV = `https://docs.google.com/spreadsheets/d/${SHEET}/gviz/tq?tqx=out:csv&headers=1&sheet=${encodeURIComponent('Start list')}`;
 const LS = 'xc.timing.v1';
+const WEB_APP = 'https://script.google.com/macros/s/AKfycbz0TD1XClbOVJHJrqoy9Ee8OCRmnVakOLIb4sq3ddvQK-bLrRpPon-XgV5WuZCR7yg1aQ/exec';
 const LEAD_MS = 30000; // time from pressing Start race to the first athlete
 const $ = s => document.querySelector(s);
 
 // st.list: [{n, name, birth, gender, off}] off = seconds after the first start; breaks: {brk:'Break · 5 min', off}
-let st = { list: [], downloadedAt: 0, raceStart: 0, laps: {} };
+let st = { list: [], downloadedAt: 0, raceStart: 0, laps: {}, ended: 0, results: null };
+// results: { endedAt, rows: [[rank, n, name, team, lap1, lap2, total]], uploadedAt }
 const LAPS = 2;
 try { st = Object.assign(st, JSON.parse(localStorage.getItem(LS)) || {}); } catch {}
 st.laps ||= {};
@@ -203,13 +226,60 @@ $('#resetBtn').onclick = () => {
     return;
   }
   clearTimeout(resetTimer); resetArmed = false; $('#resetBtn').textContent = 'Reset race';
-  st.raceStart = 0; st.laps = {}; save(); render();
+  st.raceStart = 0; st.laps = {}; st.ended = 0; save(); render();
 };
 $('#startBtn').onclick = startRace;
 
+// End race: freeze times, rank, save on the phone, then try to upload
+function computeResults() {
+  const t0 = firstStart(), end = st.ended;
+  const rows = athletes().map(a => {
+    const start = t0 + a.off * 1000, laps = st.laps[a.n] || [];
+    const l1 = laps[0] ? laps[0] - start : null, l2 = laps[1] ? laps[1] - laps[0] : null;
+    const total = laps.length >= LAPS ? laps[LAPS - 1] - start : null;
+    return { a, l1, l2, total, status: total != null ? '' : (start > end ? 'DNS' : 'DNF') };
+  });
+  const fin = rows.filter(r => r.total != null).sort((x, y) => x.total - y.total);
+  const out = rows.filter(r => r.total == null);
+  return fin.map((r, i) => [String(i + 1), r.a.n, r.a.name, r.a.team || '', lapTime(r.l1), lapTime(r.l2), lapTime(r.total)])
+    .concat(out.map(r => ['', r.a.n, r.a.name, r.a.team || '', r.l1 != null ? lapTime(r.l1) : '', r.l2 != null ? lapTime(r.l2) : '', r.status]));
+}
+let endArmed = false, endTimer;
+$('#endBtn').onclick = () => {
+  if (!endArmed) {
+    endArmed = true; $('#endBtn').textContent = 'Tap again to end';
+    endTimer = setTimeout(() => { endArmed = false; $('#endBtn').textContent = 'End race'; }, 3000);
+    return;
+  }
+  clearTimeout(endTimer); endArmed = false; $('#endBtn').textContent = 'End race';
+  st.ended = Date.now();
+  st.results = { endedAt: st.ended, rows: computeResults(), uploadedAt: 0 };
+  save(); try { wakeLock?.release(); } catch {}
+  render(); upload();
+};
+let uploading = false;
+async function upload() {
+  const r = st.results;
+  if (!r || r.uploadedAt || uploading) return;
+  if (!navigator.onLine) { render(); return; }
+  uploading = true; render();
+  try {
+    const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 15000);
+    const res = await fetch(WEB_APP, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ type: 'results', rows: r.rows }), signal: ctl.signal });
+    clearTimeout(to);
+    const out = await res.json();
+    if (!out.ok) throw new Error('not saved');
+    if (st.results === r) { r.uploadedAt = Date.now(); save(); }
+  } catch {}
+  uploading = false; render();
+}
+$('#upBtn').onclick = upload;
+window.addEventListener('online', upload);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') upload(); });
+
 // record the next lap for an athlete
 function lapPress(a) {
-  if (!st.raceStart) return;
+  if (!st.raceStart || st.ended) return;
   const now = Date.now(), start = firstStart() + a.off * 1000;
   const laps = st.laps[a.n] ||= [];
   if (now < start || laps.length >= LAPS) return;
@@ -235,13 +305,29 @@ function beep(freq, dur) {
 }
 document.addEventListener('pointerdown', unlockAudio);
 let wakeLock = null;
-async function keepAwake() { try { if (st.raceStart && 'wakeLock' in navigator && !wakeLock) { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => wakeLock = null); } } catch {} }
+async function keepAwake() { try { if (st.raceStart && !st.ended && 'wakeLock' in navigator && !wakeLock) { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => wakeLock = null); } } catch {} }
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { keepAwake(); tick(); } });
 
 /* ---------- render ---------- */
+function renderResults(live) {
+  const r = st.results, card = $('#resultsCard');
+  card.hidden = !r || live;
+  if (!r) return;
+  $('#resTitle').textContent = 'Results · ended ' + clockTime(r.endedAt);
+  const up = $('#upPill'), btn = $('#upBtn');
+  if (r.uploadedAt) { up.className = 'pill ok'; up.textContent = 'Uploaded to Sheet ✓ ' + clockTime(r.uploadedAt); btn.hidden = true; }
+  else if (uploading) { up.className = 'pill'; up.textContent = 'Uploading…'; btn.hidden = true; }
+  else { up.className = 'pill'; up.textContent = navigator.onLine ? 'Not uploaded yet' : 'Not uploaded yet: no signal. It will upload when you\'re back online.'; btn.hidden = false; }
+  const tb = $('#resRows'); tb.textContent = '';
+  for (const row of r.rows) {
+    const tr = document.createElement('tr');
+    tr.append(td(row[0], 'n rank'), td(row[1], 'n'), td(row[2]), td(row[3], 'team'), td(row[4], 'n lap'), td(row[5], 'n lap'), td(row[6], 'n lap'));
+    tb.append(tr);
+  }
+}
 function td(text, cls) { const e = document.createElement('td'); e.textContent = text; if (cls) e.className = cls; return e; }
 function render() {
-  const has = athletes().length > 0, racing = !!st.raceStart;
+  const has = athletes().length > 0, racing = !!st.raceStart, live = racing && !st.ended;
     const rp = $('#racePill');
   const when = new Date(st.downloadedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
   if (has) { rp.className = 'pill ok'; rp.textContent = `Race downloaded ✓ ${athletes().length} athletes · ${when}`; }
@@ -249,11 +335,13 @@ function render() {
   $('#newPill').hidden = !(has && newer && !racing);
   $('#dl').hidden = racing;
   if (!downloading) $('#dl').textContent = has ? 'Re-download race' : 'Download race';
-  $('#pre').hidden = racing; $('#live').hidden = !racing;
+  $('#pre').hidden = racing; $('#live').hidden = !live;
   $('#startBtn').disabled = !has;
   $('#preMsg').textContent = has ? 'The first athlete starts 30 seconds after you press Start race.' : 'Download the race first. Do it while you have signal; after that no connection is needed.';
   $('#resetBox').hidden = !racing && !$('#resetMsg').textContent;
   $('#resetBtn').hidden = !racing;
+  $('#endBtn').hidden = !live;
+  renderResults(live);
   // start order table
   const tb = $('#rows'); tb.textContent = '';
   for (const x of st.list) {
@@ -277,7 +365,7 @@ function render() {
 let lastSec = null;
 function tick() {
   if (!st.raceStart) return;
-  const now = Date.now(), t0 = firstStart(), list = athletes();
+  const now = st.ended || Date.now(), t0 = firstStart(), list = athletes();
   const started = list.filter(a => t0 + a.off * 1000 <= now);
   const upcoming = list.filter(a => t0 + a.off * 1000 > now);
   const justGone = started.filter(a => now - (t0 + a.off * 1000) < 3000); // show GO for 3 s
@@ -301,11 +389,11 @@ function tick() {
   $('#raceClock').textContent = now < t0 ? '-' + countdown(t0 - now) : dur(now - t0);
   $('#startedCount').textContent = started.length;
   // beeps: 10 s warning, 3-2-1, long tone at GO
-  if (upcoming.length) {
+  if (upcoming.length && !st.ended) {
     const sec = Math.ceil((t0 + upcoming[0].off * 1000 - now) / 1000);
     if (sec !== lastSec) { lastSec = sec; if (sec === 10 || (sec >= 1 && sec <= 3)) beep(880, .12); }
   }
-  for (const a of justGone) if (!a._beeped) { a._beeped = true; beep(1320, .5); }
+  if (!st.ended) for (const a of justGone) if (!a._beeped) { a._beeped = true; beep(1320, .5); }
   // table: lap times (current lap keeps counting), highlight next starter, grey out finished
   const nextOff = upcoming[0]?.off;
   for (const tr of $('#rows').children) {
@@ -315,14 +403,14 @@ function tick() {
     for (let k = 0; k < LAPS; k++) {
       const from = k ? laps[k - 1] : start, c = cells[k];
       if (k < laps.length) { c.textContent = lapTime(laps[k] - from); c.classList.remove('running'); }
-      else if (k === laps.length && now >= start) { c.textContent = dur(now - from); c.classList.add('running'); }
+      else if (k === laps.length && now >= start && !st.ended) { c.textContent = dur(now - from); c.classList.add('running'); }
       else { c.textContent = ''; c.classList.remove('running'); }
     }
     const fin = laps.length >= LAPS;
-    btn.disabled = now < start || fin;
+    btn.disabled = now < start || fin || !!st.ended;
     btn.textContent = fin ? '✓' : 'Lap';
     tr.classList.toggle('fin', fin);
-    tr.classList.toggle('next', off === nextOff);
+    tr.classList.toggle('next', off === nextOff && !st.ended);
   }
 }
 setInterval(tick, 200);
@@ -350,6 +438,7 @@ try { navigator.storage?.persist?.(); } catch {}
 render();
 if (st.raceStart) keepAwake();
 checkNewer();
+upload(); // retry a results upload that didn't go through earlier
 </script>
 </body>
 </html>
