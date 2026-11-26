@@ -65,6 +65,15 @@ tr:last-child td{border-bottom:0}
 .reset{display:flex;gap:8px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
 .danger{color:#b3261e;border-color:#e6b4b0}
 .upbtn{background:#0b3d91;color:#fff;border-color:#0b3d91;font-weight:700}
+.unkbtn{display:block;width:100%;min-height:64px;margin:0 0 14px;font-size:20px;font-weight:800;background:#ffd166;color:#3d2c00;border:2px solid #000;border-radius:14px}
+.unkbtn:active{transform:translateY(2px)}
+.unkcard{border:2px solid #ffb703}
+.unk{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 0;border-bottom:1px solid var(--line)}
+.unk:last-child{border-bottom:0}
+.unk .when{font-weight:800;font-variant-numeric:tabular-nums;min-width:7.5em}
+.unk .when small{display:block;font-weight:500;color:var(--muted);font-size:12px}
+.unk select{flex:1;min-width:160px;font:inherit;font-size:15px;min-height:44px;padding:6px 8px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink)}
+.unk .assign{background:#0b3d91;color:#fff;border-color:#0b3d91;font-weight:700;min-height:44px}
 .endbtn{background:#0d1420;color:#fff;border-color:#0d1420;font-weight:700;min-height:48px;padding:8px 20px}
 @media (prefers-color-scheme:dark){.endbtn{background:#e8edf5;color:#0d1420;border-color:#e8edf5}}
 td.rank{font-weight:800}
@@ -103,6 +112,13 @@ td.rank{font-weight:800}
       </div>
       <div class="elapsed"><span>Race clock <b id="raceClock">0:00</b></span><span><b id="startedCount">0</b> of <span id="totalCount">0</span> started</span></div>
     </div>
+    <button class="unkbtn" id="unkBtn">Unknown athlete crossed</button>
+  </div>
+
+  <!-- times recorded with the Unknown button, waiting to be matched to an athlete -->
+  <div class="card unkcard" id="unkCard" hidden>
+    <h2 style="margin-bottom:6px">Unassigned times (<span id="unkCount">0</span>)</h2>
+    <div id="unkList"></div>
   </div>
 
   <!-- after the race -->
@@ -153,6 +169,7 @@ let st = { list: [], downloadedAt: 0, raceStart: 0, laps: {}, ended: 0, results:
 const LAPS = 2;
 try { st = Object.assign(st, JSON.parse(localStorage.getItem(LS)) || {}); } catch {}
 st.laps ||= {};
+st.unknown ||= []; // [{id, t}] times recorded without knowing who crossed
 function save() { try { localStorage.setItem(LS, JSON.stringify(st)); } catch {} }
 
 /* ---------- helpers ---------- */
@@ -227,7 +244,7 @@ $('#resetBtn').onclick = () => {
     return;
   }
   clearTimeout(resetTimer); resetArmed = false; $('#resetBtn').textContent = 'Reset race';
-  st.raceStart = 0; st.laps = {}; st.ended = 0; save(); render();
+  st.raceStart = 0; st.laps = {}; st.ended = 0; st.unknown = []; save(); render();
 };
 $('#startBtn').onclick = startRace;
 
@@ -279,6 +296,73 @@ window.addEventListener('online', upload);
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') upload(); });
 
 // record the next lap for an athlete
+// Unknown athlete: record the time now, match it to someone later
+function unknownPress() {
+  if (!st.raceStart || st.ended) return;
+  st.unknown.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), t: Date.now() });
+  save();
+  try { navigator.vibrate?.([40, 40, 40]); } catch {}
+  beep(700, .15);
+  render();
+}
+$('#unkBtn').onclick = unknownPress;
+
+// athletes who could have crossed at time t, most likely first
+function candidates(t) {
+  const t0 = firstStart();
+  const lap1s = athletes().map(a => (st.laps[a.n] || [])[0] - (t0 + a.off * 1000)).filter(x => x > 0).sort((x, y) => x - y);
+  const typical = lap1s.length ? lap1s[Math.floor(lap1s.length / 2)] : 10 * 60000;
+  return athletes().map(a => {
+    const start = t0 + a.off * 1000, laps = st.laps[a.n] || [];
+    if (start > t || laps.length >= LAPS) return null;
+    const before = laps.filter(x => x < t);
+    const last = before.length ? before[before.length - 1] : start;
+    if (t - last < 5000) return null;
+    const own = before.length ? before.map((x, i) => x - (i ? before[i - 1] : start)) : [];
+    const est = own.length ? own.reduce((s, x) => s + x, 0) / own.length : typical;
+    return { a, lap: before.length + 1, score: Math.abs(t - (last + est)) };
+  }).filter(Boolean).sort((x, y) => x.score - y.score);
+}
+function assignUnknown(id, n) {
+  const u = st.unknown.find(x => x.id === id); if (!u || !n) return;
+  const laps = st.laps[n] ||= [];
+  if (laps.length >= LAPS) return;
+  laps.push(u.t); laps.sort((x, y) => x - y);
+  st.unknown = st.unknown.filter(x => x.id !== id);
+  if (st.ended && st.results) { st.results.rows = computeResults(); st.results.uploadedAt = 0; } // fix results after the race
+  save(); render(); tick();
+  if (st.ended) upload();
+}
+const delArmed = new Set();
+function renderUnknown() {
+  const card = $('#unkCard'), list = $('#unkList');
+  card.hidden = !st.unknown.length || !st.raceStart;
+  $('#unkCount').textContent = st.unknown.length;
+  list.textContent = '';
+  const t0 = firstStart();
+  for (const u of st.unknown.slice().sort((x, y) => x.t - y.t)) {
+    const row = document.createElement('div'); row.className = 'unk';
+    const when = document.createElement('div'); when.className = 'when';
+    when.textContent = clockTime(u.t) + '.' + Math.floor((u.t % 1000) / 100);
+    const sm = document.createElement('small'); sm.textContent = 'race clock ' + dur(u.t - t0); when.append(sm);
+    const sel = document.createElement('select');
+    const opt0 = document.createElement('option'); opt0.value = ''; opt0.textContent = 'Who was it?'; sel.append(opt0);
+    for (const c of candidates(u.t)) {
+      const o = document.createElement('option'); o.value = c.a.n;
+      o.textContent = '#' + c.a.n + ' ' + c.a.name + ' (' + (c.lap >= LAPS ? 'finish' : 'lap ' + c.lap) + ')';
+      sel.append(o);
+    }
+    const go = document.createElement('button'); go.className = 'assign'; go.textContent = 'Assign';
+    go.onclick = () => assignUnknown(u.id, sel.value);
+    const del = document.createElement('button'); del.className = 'danger'; del.textContent = delArmed.has(u.id) ? 'Tap again' : '✕';
+    del.onclick = () => {
+      if (!delArmed.has(u.id)) { delArmed.add(u.id); del.textContent = 'Tap again'; setTimeout(() => { delArmed.delete(u.id); del.textContent = '✕'; }, 3000); return; }
+      st.unknown = st.unknown.filter(x => x.id !== u.id); save(); render();
+    };
+    row.append(when, sel, go, del); list.append(row);
+  }
+}
+
 function lapPress(a) {
   if (!st.raceStart || st.ended) return;
   const now = Date.now(), start = firstStart() + a.off * 1000;
@@ -314,7 +398,7 @@ function renderResults(live) {
   const r = st.results, card = $('#resultsCard');
   card.hidden = !r || live;
   if (!r) return;
-  $('#resTitle').textContent = 'Results · ended ' + clockTime(r.endedAt);
+  $('#resTitle').textContent = 'Results · ended ' + clockTime(r.endedAt) + (st.unknown.length ? ' · ' + st.unknown.length + ' unassigned time' + (st.unknown.length > 1 ? 's' : '') : '');
   const up = $('#upPill'), btn = $('#upBtn');
   if (r.uploadedAt) { up.className = 'pill ok'; up.textContent = 'Uploaded to Sheet ✓ ' + clockTime(r.uploadedAt); btn.hidden = true; }
   else if (uploading) { up.className = 'pill'; up.textContent = 'Uploading…'; btn.hidden = true; }
@@ -344,6 +428,7 @@ function render() {
   $('#endBtn').hidden = !live;
   $('#orderCard').hidden = !!st.ended; // start order isn't needed once the race is over
   renderResults(live);
+  renderUnknown();
   // start order table
   const tb = $('#rows'); tb.textContent = '';
   for (const x of st.list) {
