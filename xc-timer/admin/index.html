@@ -65,7 +65,7 @@ body.drag{cursor:grabbing;user-select:none}
 
   <div class="card">
     <div class="top">
-      <h2>Start list (<span id="count">…</span>)</h2>
+      <h2>Proposed Start List (<span id="count">…</span>)</h2>
       <span class="muted" id="upd"></span>
       <span>
         <button id="addBreak">+ Break</button>
@@ -106,6 +106,7 @@ st.sort = st.sort.filter(s => COLS.some(c => c.key === s.key)); // drop sorts on
 const save = () => { try { localStorage.setItem(LS, JSON.stringify(st)); } catch {} };
 
 let racers = new Map(); // id -> racer
+let loaded = false;
 
 /* ---------- data ---------- */
 function parseCSV(t) {
@@ -168,6 +169,7 @@ function fmt(sec) { sec = Math.round(sec) % 86400; return [Math.floor(sec / 3600
 function startTimes() {
   const out = new Map(); let t = toSec(st.first), anyRacer = false, pending = 0;
   for (const it of st.order) {
+    if (it.t === 'r' && !racers.has(it.id)) continue;
     if (it.t === 'b') { pending += (+it.min || 0) * 60; continue; }
     if (pending) t += pending; else if (anyRacer) t += +st.interval || 0;
     out.set(it, t); anyRacer = true; pending = 0;
@@ -205,8 +207,10 @@ function render() {
   if (st.sort.length) { const clr = el('button', { textContent: 'Clear' }); clr.onclick = () => { st.sort = []; save(); render(); }; bar.append(clr); }
   // rows
   const tb = $('#rows'); tb.textContent = '';
+  if (!loaded) { tb.append(el('tr', {}, el('td', { colSpan: 6, className: 'muted', textContent: 'Loading…' }))); return; }
   const times = startTimes(); let n = 0;
   st.order.forEach((it, idx) => {
+    if (it.t === 'r' && !racers.has(it.id)) return;
     const grip = el('td', { className: 'grip', textContent: '⠿', title: 'Drag to move' });
     grip.addEventListener('pointerdown', e => startDrag(e, idx));
     let tr;
@@ -272,7 +276,7 @@ $('#refresh').onclick = load;
 // write the current start list to the Sheet's "Start list" tab (replaces whatever is there)
 $('#generate').onclick = async () => {
   const btn = $('#generate'), times = startTimes(); let n = 0;
-  const rows = st.order.map(it => {
+  const rows = st.order.filter(it => it.t === 'b' || racers.has(it.id)).map(it => {
     if (it.t === 'b') return ['', '', 'Break · ' + it.min + ' min', '', ''];
     const r = racers.get(it.id);
     return [String(++n), fmt(times.get(it)), r.name, String(r.birth ?? ''), r.gender || ''];
@@ -306,7 +310,7 @@ async function load() {
       const by = String(r[iB] || '').match(/\d{4}/);
       m.set(name.toLowerCase(), { id: name.toLowerCase(), name, birth: by ? +by[0] : '', gender: (r[iG] || '').trim(), reg: parseStamp(r[iT]), regText: (r[iT] || '').trim() });
     }
-    racers = m; reconcile(); save();
+    racers = m; loaded = true; reconcile(); save();
     $('#upd').textContent = 'loaded ' + new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   } catch (e) {
     $('#upd').textContent = 'couldn’t load (' + e.message + ')';
