@@ -65,8 +65,9 @@ tr:last-child td{border-bottom:0}
 .reset{display:flex;gap:8px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
 .danger{color:#b3261e;border-color:#e6b4b0}
 .upbtn{background:#0b3d91;color:#fff;border-color:#0b3d91;font-weight:700}
-.unkbtn{display:block;width:100%;min-height:64px;margin:0 0 14px;font-size:20px;font-weight:800;background:#ffd166;color:#3d2c00;border:2px solid #000;border-radius:14px}
-.unkbtn:active{transform:translateY(2px)}
+.unkhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.plus{width:52px;height:52px;min-height:52px;padding:0;font-size:32px;font-weight:700;line-height:1;background:#ffd166;color:#3d2c00;border:2px solid #000;border-radius:12px}
+.plus:active{transform:translateY(2px)}
 .unkcard{border:2px solid #ffb703}
 .unk{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 0;border-bottom:1px solid var(--line)}
 .unk:last-child{border-bottom:0}
@@ -141,12 +142,13 @@ td.rank{font-weight:800}
     </div>
   </div>
 
-  <button class="unkbtn" id="unkBtn" hidden>Unknown athlete crossed</button>
-
   <!-- times recorded with the Unknown button, waiting to be matched to an athlete -->
   <div class="card unkcard" id="unkCard" hidden>
-    <h2 style="margin-bottom:6px">Unassigned times (<span id="unkCount">0</span>)</h2>
-    <div id="unkList"></div>
+    <div class="unkhead">
+      <h2>Unassigned times (<span id="unkCount">0</span>)</h2>
+      <button class="plus" id="unkBtn" title="Record a time for an unknown athlete" aria-label="Record a time for an unknown athlete">+</button>
+    </div>
+    <div id="unkList"><p class="muted" id="unkEmpty" style="margin:4px 0 0">Tap + when someone crosses and you don't know who.</p></div>
   </div>
 
   <div class="reset" id="resetBox" hidden>
@@ -337,9 +339,12 @@ function assignUnknown(id, n) {
 const delArmed = new Set();
 function renderUnknown() {
   const card = $('#unkCard'), list = $('#unkList');
-  card.hidden = !st.unknown.length || !st.raceStart;
+  const live = st.raceStart && !st.ended;
+  card.hidden = !live && !(st.raceStart && st.unknown.length);
+  $('#unkBtn').hidden = !live;
   $('#unkCount').textContent = st.unknown.length;
   list.textContent = '';
+  if (!st.unknown.length) { const p = document.createElement('p'); p.className = 'muted'; p.style.margin = '4px 0 0'; p.textContent = 'Tap + when someone crosses and you don\'t know who.'; list.append(p); }
   const t0 = firstStart();
   for (const u of st.unknown.slice().sort((x, y) => x.t - y.t)) {
     const row = document.createElement('div'); row.className = 'unk';
@@ -427,7 +432,6 @@ function render() {
   $('#resetBox').hidden = !racing && !$('#resetMsg').textContent;
   $('#resetBtn').hidden = !racing;
   $('#endBtn').hidden = !live;
-  $('#unkBtn').hidden = !live;
   $('#orderCard').hidden = !!st.ended; // start order isn't needed once the race is over
   renderResults(live);
   renderUnknown();
