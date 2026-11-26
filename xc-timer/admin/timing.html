@@ -75,6 +75,7 @@ tr:last-child td{border-bottom:0}
 <main>
   <div class="card status">
     <span class="pill" id="racePill">Race not downloaded</span>
+    <span class="pill" id="newPill" hidden>Newer start list available</span>
     <span class="grow"></span>
     <button id="dl">Download race</button>
   </div>
@@ -177,7 +178,7 @@ async function download() {
     st.list = rows.map(r => r[0]
       ? { n: r[0], name: r[2] || '', team: r[5] || '', off: toSec(r[1]) - base }
       : { brk: r[2] || 'Break', off: null });
-    st.downloadedAt = Date.now(); save();
+    st.downloadedAt = Date.now(); st.sig = text; newer = false; save();
     flash('Start list downloaded ✓');
   } catch (e) {
     flash(navigator.onLine ? 'Download failed: ' + (e.name === 'AbortError' ? 'timed out' : e.message) : 'No connection. Using the saved copy.');
@@ -241,12 +242,11 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 function td(text, cls) { const e = document.createElement('td'); e.textContent = text; if (cls) e.className = cls; return e; }
 function render() {
   const has = athletes().length > 0, racing = !!st.raceStart;
-  // one status: is this phone ready to run the race with no signal?
-  const rp = $('#racePill');
+    const rp = $('#racePill');
   const when = new Date(st.downloadedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
-  if (has && pageSaved) { rp.className = 'pill ok'; rp.textContent = `Ready offline ✓ ${athletes().length} athletes · downloaded ${when}`; }
-  else if (has) { rp.className = 'pill'; rp.textContent = `${athletes().length} athletes downloaded, but the page isn't saved for offline yet. Reload once with signal.`; }
+  if (has) { rp.className = 'pill ok'; rp.textContent = `Race downloaded ✓ ${athletes().length} athletes · ${when}`; }
   else { rp.className = 'pill'; rp.textContent = 'Race not downloaded'; }
+  $('#newPill').hidden = !(has && newer && !racing);
   $('#dl').hidden = racing;
   if (!downloading) $('#dl').textContent = has ? 'Re-download race' : 'Download race';
   $('#pre').hidden = racing; $('#live').hidden = !racing;
@@ -328,19 +328,28 @@ function tick() {
 setInterval(tick, 200);
 
 /* ---------- offline ---------- */
-// the page counts as saved once the offline cache holds it (true even after a hard refresh)
-let pageSaved = false;
-async function checkSaved() {
-  try { pageSaved = !!(await caches.match(new URL('timing.html', location.href).href)); } catch { pageSaved = false; }
-  render();
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+
+// check (never download) whether the Sheet has a different start list than the one on this phone
+let newer = false;
+async function checkNewer() {
+  if (!athletes().length || st.raceStart || !navigator.onLine) return;
+  try {
+    const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 8000);
+    const res = await fetch(URL_CSV, { cache: 'no-store', signal: ctl.signal }); clearTimeout(to);
+    const text = await res.text();
+    if (!res.ok || /^\s*</.test(text)) return;
+    newer = text !== st.sig && parseCSV(text).slice(1).some(r => r[0]);
+    render();
+  } catch {}
 }
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').then(() => navigator.serviceWorker.ready).then(checkSaved).catch(checkSaved);
-}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkNewer(); });
+window.addEventListener('online', checkNewer);
 try { navigator.storage?.persist?.(); } catch {}
 
 render();
 if (st.raceStart) keepAwake();
+checkNewer();
 </script>
 </body>
 </html>
