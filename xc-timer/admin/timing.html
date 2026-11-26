@@ -220,7 +220,7 @@ async function download() {
     if (!starters.length) throw new Error('no start list generated yet');
     const base = toSec(starters[0][1]);
     st.list = rows.map(r => r[0]
-      ? { n: r[0], name: r[2] || '', team: r[5] || '', off: toSec(r[1]) - base }
+      ? { n: r[0], name: r[2] || '', birth: r[3] || '', gender: r[4] || '', team: r[5] || '', off: toSec(r[1]) - base }
       : { brk: r[2] || 'Break', off: null });
     st.downloadedAt = Date.now(); st.sig = text; newer = false; save();
     flash('Start list downloaded ✓');
@@ -262,8 +262,10 @@ function computeResults() {
   });
   const fin = rows.filter(r => r.total != null).sort((x, y) => x.total - y.total);
   const out = rows.filter(r => r.total == null);
-  return fin.map((r, i) => [String(i + 1), r.a.n, r.a.name, r.a.team || '', lapTime(r.l1), lapTime(r.l2), lapTime(r.total)])
-    .concat(out.map(r => ['', r.a.n, r.a.name, r.a.team || '', r.l1 != null ? lapTime(r.l1) : '', r.l2 != null ? lapTime(r.l2) : '', r.status]));
+  // columns: Rank, #, Name, Team, Birth year, Gender, Lap 1, Lap 2, Total
+  const who = a => [a.n, a.name, a.team || '', a.birth || '', a.gender || ''];
+  return fin.map((r, i) => [String(i + 1), ...who(r.a), lapTime(r.l1), lapTime(r.l2), lapTime(r.total)])
+    .concat(out.map(r => ['', ...who(r.a), r.l1 != null ? lapTime(r.l1) : '', r.l2 != null ? lapTime(r.l2) : '', r.status]));
 }
 let endArmed = false, endTimer;
 $('#endBtn').onclick = () => {
@@ -412,7 +414,8 @@ function renderResults(live) {
   const tb = $('#resRows'); tb.textContent = '';
   for (const row of r.rows) {
     const tr = document.createElement('tr');
-    tr.append(td(row[0], 'n rank'), td(row[1], 'n'), td(row[2]), td(row[3], 'team'), td(row[4], 'n lap'), td(row[5], 'n lap'), td(row[6], 'n lap'));
+    const L = row.length; // results saved before birth year/gender were added have 7 columns
+    tr.append(td(row[0], 'n rank'), td(row[1], 'n'), td(row[2]), td(row[3], 'team'), td(row[L - 3], 'n lap'), td(row[L - 2], 'n lap'), td(row[L - 1], 'n lap'));
     tb.append(tr);
   }
 }
