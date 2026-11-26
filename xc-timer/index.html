@@ -18,7 +18,7 @@ nav{display:flex;gap:4px;margin-top:14px;overflow-x:auto}
 nav a{color:#cfdcf5;text-decoration:none;font-weight:600;font-size:15px;padding:10px 16px;border-radius:10px 10px 0 0;white-space:nowrap}
 nav a.on{background:var(--bg);color:var(--pri)}
 main{max-width:640px;margin:0 auto;padding:16px}
-.reg{display:block;text-align:center;background:#d62828;color:#fff;text-decoration:none;font-weight:800;font-size:20px;padding:16px;border-radius:14px;margin:0 0 16px}
+.reg{display:block;text-align:center;background:#d62828;color:#fff;text-decoration:none;font-weight:800;font-size:20px;padding:16px;border-radius:14px;margin:16px 0 0}
 .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
 .top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
 h2{font-size:17px;margin:0}
@@ -37,7 +37,6 @@ tr:last-child td{border-bottom:0}
   <nav><a class="on" href="./">Registration</a><a href="start-list.html">Start list</a></nav>
 </header>
 <main>
-  <a class="reg" href="https://docs.google.com/forms/d/e/1FAIpQLSdtr5MrfNsVe-3TSQ61Qxk4jsclQG5V2u6C5aetgGZZ_U9YAg/viewform" target="_blank" rel="noopener">Register</a>
   <div class="card">
     <div class="top"><h2>Registered (<span id="count">…</span>)</h2><span class="muted" id="upd"></span></div>
     <table>
@@ -45,6 +44,7 @@ tr:last-child td{border-bottom:0}
       <tbody id="rows"><tr><td colspan="3" class="muted">Loading…</td></tr></tbody>
     </table>
   </div>
+  <a class="reg" href="https://docs.google.com/forms/d/e/1FAIpQLSdtr5MrfNsVe-3TSQ61Qxk4jsclQG5V2u6C5aetgGZZ_U9YAg/viewform" target="_blank" rel="noopener">Register</a>
 </main>
 <script>
 "use strict";
