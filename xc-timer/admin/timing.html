@@ -260,6 +260,7 @@ function render() {
     else {
       tr.dataset.off = x.off; tr.dataset.n = x.n;
       const btn = document.createElement('button'); btn.className = 'lapbtn'; btn.textContent = 'Lap';
+      btn.disabled = true; // enabled by tick() once the race is running and this athlete has started
       btn.onclick = () => lapPress(x);
       const act = td(''); act.className = 'act'; act.append(btn);
       tr.append(td(x.n, 'n'), td('+' + dur(x.off * 1000), 't'), td(x.name), td(x.birth, 'n opt'), td(x.gender, 'n opt'), td('', 'n lap'), td('', 'n lap'), act);
