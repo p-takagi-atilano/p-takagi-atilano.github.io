@@ -9,29 +9,44 @@
 <link rel="icon" href="../icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="../icon-192.png">
 <style>
-:root{--bg:#f4f6f9;--card:#fff;--ink:#0d1420;--muted:#5a6575;--line:#d5dbe4;--pri:#0b3d91;--soft:#e8eef8}
-@media (prefers-color-scheme:dark){:root{--bg:#0e131b;--card:#161d28;--ink:#e8edf5;--muted:#9aa6b8;--line:#2a3445;--pri:#8fb3ff;--soft:#1f2a3c}}
+:root{--bg:#f4f6f9;--card:#fff;--ink:#0d1420;--muted:#5a6575;--line:#d5dbe4;--pri:#0b3d91;--soft:#e8eef8;--brk:#fff4dc;--brk-ink:#8a5a00}
+@media (prefers-color-scheme:dark){:root{--bg:#0e131b;--card:#161d28;--ink:#e8edf5;--muted:#9aa6b8;--line:#2a3445;--pri:#8fb3ff;--soft:#1f2a3c;--brk:#2e2614;--brk-ink:#f0c46a}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
 header{background:#0b3d91;color:#fff;padding:calc(18px + env(safe-area-inset-top)) 16px 18px}
 header h1{margin:0;font-size:24px}
-nav{display:flex;gap:4px;margin-top:14px;overflow-x:auto}
-nav a{color:#cfdcf5;text-decoration:none;font-weight:600;font-size:15px;padding:10px 16px;border-radius:10px 10px 0 0;white-space:nowrap}
-nav a.on{background:var(--bg);color:var(--pri)}
-main{max-width:640px;margin:0 auto;padding:16px}
-.reg{display:block;text-align:center;background:#d62828;color:#fff;text-decoration:none;font-weight:800;font-size:20px;padding:16px;border-radius:14px;margin:0 0 16px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
-.top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+main{max-width:820px;margin:0 auto;padding:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:14px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
 h2{font-size:17px;margin:0}
 .muted{color:var(--muted);font-size:13px}
+button{font:inherit;font-size:14px;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 12px;cursor:pointer}
+input{font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 8px}
+.settings{display:flex;gap:16px;flex-wrap:wrap}
+.settings label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted)}
+.settings input{width:120px}
+.sortbar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-height:34px;margin-bottom:8px;font-size:14px}
+.chip{display:inline-flex;align-items:center;gap:6px;background:var(--soft);color:var(--pri);border-radius:99px;padding:4px 6px 4px 10px;font-weight:600}
+.chip button{border:0;background:transparent;color:inherit;padding:0 4px;font-size:15px;line-height:1}
+.sep{color:var(--muted)}
+.wrap{overflow-x:auto;margin:0 -6px}
 table{width:100%;border-collapse:collapse;font-size:15px}
-th,td{text-align:left;padding:9px 6px;border-bottom:1px solid var(--line)}
-th{font-size:12px;text-transform:uppercase;letter-spacing:.3px;color:var(--muted)}
+th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:12px;text-transform:uppercase;letter-spacing:.3px;color:var(--muted);user-select:none}
+th.s{cursor:pointer}
+th.s:hover{color:var(--ink)}
+th.act{color:var(--pri)}
+th .ind{display:inline-block;min-width:2.2em;font-size:11px}
 td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+td.pos{color:var(--muted);font-variant-numeric:tabular-nums}
+td.start{font-variant-numeric:tabular-nums;font-weight:600}
+.grip{cursor:grab;touch-action:none;color:var(--muted);font-size:18px;padding:0 6px;user-select:none;width:28px}
+tr.dragging{opacity:.6;background:var(--soft)}
+tr.brk td{background:var(--brk);color:var(--brk-ink);font-weight:600}
+tr.brk input{width:64px;padding:3px 6px}
+tr.brk button{padding:2px 8px}
 tr:last-child td{border-bottom:0}
-.num{display:inline-block;min-width:1.8em;color:var(--muted)}
-.soon{text-align:center;padding:48px 16px}
-.soon h2{font-size:22px;margin:0 0 6px}
+body.drag{cursor:grabbing;user-select:none}
 </style>
 </head>
 <body>
@@ -39,6 +54,247 @@ tr:last-child td{border-bottom:0}
   <h1>2026 Silver Star PNW Time Trial · Admin</h1>
 </header>
 <main>
+  <div class="card">
+    <div class="settings">
+      <label>Race start time (first athlete)<input type="time" id="first" step="1"></label>
+      <label>Interval (sec)<input type="number" id="interval" min="0" inputmode="numeric"></label>
+      <label>Break length (min)<input type="number" id="brkLen" min="1" inputmode="numeric"></label>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="top">
+      <h2>Start list (<span id="count">…</span>)</h2>
+      <span class="muted" id="upd"></span>
+      <span>
+        <button id="addBreak">+ Break</button>
+        <button id="refresh">Refresh</button>
+      </span>
+    </div>
+    <div class="sortbar" id="sortbar"></div>
+    <div class="wrap">
+      <table>
+        <thead><tr id="head"></tr></thead>
+        <tbody id="rows"><tr><td colspan="8" class="muted">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+  <p class="muted">
+    Sorting: click a column to add it to the sort, click again to flip it, and a third time to remove it. The first column sorts first and later ones break ties.<br>
+    Reordering: drag ⠿ to move a racer or a break. Dragging switches the list to a custom order. “+ Break” adds a break at the end; drag it into place. A break replaces the normal interval between the racers on either side.<br>
+    This order is saved in this browser only, for now.
+  </p>
 </main>
+<script>
+"use strict";
+const SHEET = '1PqselA1x1xcKgkLQq2a1JQm8nFdDSZ_i21E_3XVotaA';
+const URL_CSV = `https://docs.google.com/spreadsheets/d/${SHEET}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent('Form Responses 1')}`;
+const LS = 'xc.admin.v2';
+const $ = s => document.querySelector(s);
+const uid = () => Math.random().toString(36).slice(2, 9);
+
+const COLS = [
+  { key: 'name', label: 'Name', type: 'text' },
+  { key: 'birth', label: 'Birth year', type: 'num', cls: 'n' },
+  { key: 'gender', label: 'Gender', type: 'text' },
+  { key: 'reg', label: 'Registered', type: 'num', cls: 'n', show: r => r.regText },
+];
+
+// state saved in this browser
+let st = { first: '10:00:00', interval: 30, brkLen: 5, sort: [], order: [] };
+// order: [{t:'r', id:<lowercased name>} | {t:'b', id, min}]
+try { st = Object.assign(st, JSON.parse(localStorage.getItem(LS)) || {}); } catch {}
+const save = () => { try { localStorage.setItem(LS, JSON.stringify(st)); } catch {} };
+
+let racers = new Map(); // id -> racer
+
+/* ---------- data ---------- */
+function parseCSV(t) {
+  const rows = []; let row = [], f = '', q = false;
+  for (let i = 0; i < t.length; i++) {
+    const c = t[i];
+    if (q) { if (c === '"') { if (t[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += c; }
+    else if (c === '"') q = true;
+    else if (c === ',') { row.push(f); f = ''; }
+    else if (c === '\n' || c === '\r') { if (c === '\r' && t[i + 1] === '\n') i++; row.push(f); rows.push(row); row = []; f = ''; }
+    else f += c;
+  }
+  if (f || row.length) { row.push(f); rows.push(row); }
+  return rows.filter(r => r.some(x => x.trim()));
+}
+function parseStamp(s) { // "11/26/2026 21:28:56"
+  const m = String(s).match(/(\d+)\/(\d+)\/(\d+)\s+(\d+):(\d+):?(\d+)?/);
+  return m ? new Date(+m[3], m[1] - 1, +m[2], +m[4], +m[5], +(m[6] || 0)).getTime() : 0;
+}
+
+// keep saved order, drop racers who are gone, add new registrations at the end
+function reconcile() {
+  st.order = st.order.filter(it => it.t === 'b' || racers.has(it.id));
+  const have = new Set(st.order.filter(it => it.t === 'r').map(it => it.id));
+  const fresh = [...racers.values()].filter(r => !have.has(r.id)).sort((a, b) => a.reg - b.reg);
+  st.order.push(...fresh.map(r => ({ t: 'r', id: r.id })));
+  if (st.sort.length) applySort();
+}
+
+/* ---------- sorting ---------- */
+function cmp(a, b, col, dir) {
+  const x = a[col.key], y = b[col.key];
+  const ex = x === '' || x == null || (col.type === 'num' && isNaN(x)), ey = y === '' || y == null || (col.type === 'num' && isNaN(y));
+  if (ex || ey) return ex === ey ? 0 : ex ? 1 : -1; // blanks last in either direction
+  return dir * (col.type === 'num' ? x - y : String(x).localeCompare(String(y), undefined, { sensitivity: 'base' }));
+}
+// re-sort racers; breaks stay after the same number of racers
+function applySort() {
+  const list = [...racers.values()].sort((a, b) => {
+    for (const s of st.sort) { const c = cmp(a, b, COLS.find(x => x.key === s.key), s.dir); if (c) return c; }
+    return a.reg - b.reg;
+  });
+  const slots = st.order.map(it => it.t);
+  let k = 0;
+  const breaks = st.order.filter(it => it.t === 'b');
+  st.order = slots.map(t => t === 'b' ? breaks.shift() : { t: 'r', id: list[k++].id });
+}
+function clickCol(key) {
+  const i = st.sort.findIndex(s => s.key === key);
+  if (i < 0) st.sort.push({ key, dir: 1 });
+  else if (st.sort[i].dir === 1) st.sort[i].dir = -1;
+  else st.sort.splice(i, 1);
+  if (st.sort.length) applySort();
+  save(); render();
+}
+
+/* ---------- start times ---------- */
+function toSec(hms) { const p = String(hms || '').split(':').map(Number); return (p[0] || 0) * 3600 + (p[1] || 0) * 60 + (p[2] || 0); }
+function fmt(sec) { sec = Math.round(sec) % 86400; return [Math.floor(sec / 3600), Math.floor(sec / 60) % 60, sec % 60].map(n => String(n).padStart(2, '0')).join(':'); }
+function startTimes() {
+  const out = new Map(); let t = toSec(st.first), anyRacer = false, pending = 0;
+  for (const it of st.order) {
+    if (it.t === 'b') { pending += (+it.min || 0) * 60; continue; }
+    if (pending) t += pending; else if (anyRacer) t += +st.interval || 0;
+    out.set(it, t); anyRacer = true; pending = 0;
+  }
+  return out;
+}
+
+/* ---------- render ---------- */
+function el(tag, props = {}, ...kids) { const e = document.createElement(tag); Object.assign(e, props); e.append(...kids); return e; }
+function render() {
+  $('#first').value = st.first; $('#interval').value = st.interval; $('#brkLen').value = st.brkLen;
+  // header
+  const head = $('#head'); head.textContent = '';
+  head.append(el('th'), el('th', { textContent: '#' }), el('th', { textContent: 'Start' }));
+  for (const c of COLS) {
+    const i = st.sort.findIndex(s => s.key === c.key);
+    const th = el('th', { className: 's ' + (c.cls || '') + (i >= 0 ? ' act' : '') }, c.label + ' ',
+      el('span', { className: 'ind', textContent: i >= 0 ? (st.sort.length > 1 ? i + 1 : '') + (st.sort[i].dir === 1 ? '↑' : '↓') : '' }));
+    th.onclick = () => clickCol(c.key);
+    head.append(th);
+  }
+  // sort chips
+  const bar = $('#sortbar'); bar.textContent = '';
+  bar.append(el('span', { className: 'muted', textContent: 'Sort:' }));
+  if (!st.sort.length) bar.append(el('span', { className: 'muted', textContent: 'custom order' }));
+  st.sort.forEach((s, i) => {
+    if (i) bar.append(el('span', { className: 'sep', textContent: 'then' }));
+    const col = COLS.find(c => c.key === s.key);
+    const flip = el('button', { title: 'Flip direction', textContent: col.label + ' ' + (s.dir === 1 ? (col.type === 'num' ? '↑ low→high' : '↑ A→Z') : (col.type === 'num' ? '↓ high→low' : '↓ Z→A')) });
+    flip.onclick = () => { s.dir *= -1; applySort(); save(); render(); };
+    const x = el('button', { title: 'Remove', textContent: '×' });
+    x.onclick = () => { st.sort.splice(i, 1); if (st.sort.length) applySort(); save(); render(); };
+    bar.append(el('span', { className: 'chip' }, flip, x));
+  });
+  if (st.sort.length) { const clr = el('button', { textContent: 'Clear' }); clr.onclick = () => { st.sort = []; save(); render(); }; bar.append(clr); }
+  // rows
+  const tb = $('#rows'); tb.textContent = '';
+  const times = startTimes(); let n = 0;
+  st.order.forEach((it, idx) => {
+    const grip = el('td', { className: 'grip', textContent: '⠿', title: 'Drag to move' });
+    grip.addEventListener('pointerdown', e => startDrag(e, idx));
+    let tr;
+    if (it.t === 'b') {
+      const inp = el('input', { type: 'number', min: 0, value: it.min, inputMode: 'numeric' });
+      inp.onchange = () => { it.min = Math.max(0, +inp.value || 0); save(); render(); };
+      const rm = el('button', { textContent: '×', title: 'Remove break' });
+      rm.onclick = () => { st.order.splice(idx, 1); save(); render(); };
+      tr = el('tr', { className: 'brk' }, grip, el('td'), el('td', { colSpan: COLS.length + 1 }, 'Break ', inp, ' min ', rm));
+    } else {
+      const r = racers.get(it.id);
+      tr = el('tr', {}, grip, el('td', { className: 'pos', textContent: ++n }), el('td', { className: 'start', textContent: fmt(times.get(it)) }),
+        ...COLS.map(c => el('td', { className: c.cls || '', textContent: c.show ? c.show(r) : (r[c.key] ?? '') })));
+    }
+    tb.append(tr);
+  });
+  if (!racers.size) tb.append(el('tr', {}, el('td', { colSpan: 8, className: 'muted', textContent: 'No registrations yet.' })));
+  $('#count').textContent = racers.size;
+}
+
+/* ---------- drag to reorder (mouse + touch) ---------- */
+let drag = null;
+function startDrag(e, idx) {
+  e.preventDefault();
+  const rows = [...$('#rows').children];
+  drag = { from: idx, to: idx, rows, row: rows[idx] };
+  drag.row.classList.add('dragging'); document.body.classList.add('drag');
+  document.addEventListener('pointermove', onDrag);
+  document.addEventListener('pointerup', endDrag, { once: true });
+  document.addEventListener('pointercancel', endDrag, { once: true });
+}
+function onDrag(e) {
+  if (!drag) return;
+  const others = drag.rows.filter(r => r !== drag.row);
+  let to = others.length;
+  for (let i = 0; i < others.length; i++) { const b = others[i].getBoundingClientRect(); if (e.clientY < b.top + b.height / 2) { to = i; break; } }
+  if (to !== drag.to) {
+    drag.to = to;
+    const tb = $('#rows'); tb.insertBefore(drag.row, others[to] || null);
+  }
+  // auto-scroll near the screen edges
+  if (e.clientY < 60) window.scrollBy(0, -12); else if (e.clientY > innerHeight - 60) window.scrollBy(0, 12);
+}
+function endDrag() {
+  document.removeEventListener('pointermove', onDrag);
+  document.body.classList.remove('drag');
+  if (!drag) return;
+  const { from, to } = drag; drag = null;
+  if (from !== to) {
+    const [it] = st.order.splice(from, 1); st.order.splice(to, 0, it);
+    st.sort = []; // manual order from here on
+    save();
+  }
+  render();
+}
+
+/* ---------- controls ---------- */
+$('#first').onchange = e => { st.first = e.target.value || '10:00:00'; save(); render(); };
+$('#interval').onchange = e => { st.interval = Math.max(0, +e.target.value || 0); save(); render(); };
+$('#brkLen').onchange = e => { st.brkLen = Math.max(1, +e.target.value || 5); save(); render(); };
+$('#addBreak').onclick = () => { st.order.push({ t: 'b', id: uid(), min: st.brkLen }); save(); render(); };
+$('#refresh').onclick = load;
+
+async function load() {
+  $('#upd').textContent = 'loading…';
+  try {
+    const res = await fetch(URL_CSV, { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    if (/^\s*</.test(text)) throw new Error('sheet not shared');
+    const rows = parseCSV(text);
+    const h = (rows.shift() || []).map(x => x.trim().toLowerCase());
+    const iT = h.findIndex(x => x.includes('timestamp')), iN = h.indexOf('name'), iB = h.findIndex(x => x.includes('birth')), iG = h.indexOf('gender');
+    const m = new Map(); // a later submission with the same name replaces the earlier one
+    for (const r of rows) {
+      const name = (r[iN] || '').trim(); if (!name) continue;
+      const by = String(r[iB] || '').match(/\d{4}/);
+      m.set(name.toLowerCase(), { id: name.toLowerCase(), name, birth: by ? +by[0] : '', gender: (r[iG] || '').trim(), reg: parseStamp(r[iT]), regText: (r[iT] || '').trim() });
+    }
+    racers = m; reconcile(); save();
+    $('#upd').textContent = 'loaded ' + new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  } catch (e) {
+    $('#upd').textContent = 'couldn’t load (' + e.message + ')';
+  }
+  render();
+}
+render(); load();
+</script>
 </body>
 </html>
