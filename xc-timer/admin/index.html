@@ -81,7 +81,7 @@ body.drag{cursor:grabbing;user-select:none}
     <div class="wrap">
       <table>
         <thead><tr id="head"></tr></thead>
-        <tbody id="rows"><tr><td colspan="6" class="muted">Loading…</td></tr></tbody>
+        <tbody id="rows"><tr><td colspan="7" class="muted">Loading…</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -98,6 +98,7 @@ const COLS = [
   { key: 'name', label: 'Name', type: 'text' },
   { key: 'birth', label: 'Birth year', type: 'num', cls: 'n' },
   { key: 'gender', label: 'Gender', type: 'text' },
+  { key: 'team', label: 'Team', type: 'text' },
 ];
 
 // state saved in this browser
@@ -211,7 +212,7 @@ function render() {
   if (st.sort.length) { const clr = el('button', { textContent: 'Clear' }); clr.onclick = () => { st.sort = []; save(); render(); }; bar.append(clr); }
   // rows
   const tb = $('#rows'); tb.textContent = '';
-  if (!loaded) { tb.append(el('tr', {}, el('td', { colSpan: 6, className: 'muted', textContent: 'Loading…' }))); return; }
+  if (!loaded) { tb.append(el('tr', {}, el('td', { colSpan: 7, className: 'muted', textContent: 'Loading…' }))); return; }
   const times = startTimes(); let n = 0;
   st.order.forEach((it, idx) => {
     if (it.t === 'r' && !racers.has(it.id)) return;
@@ -231,7 +232,7 @@ function render() {
     }
     tb.append(tr);
   });
-  if (!racers.size) tb.append(el('tr', {}, el('td', { colSpan: 6, className: 'muted', textContent: 'No registrations yet.' })));
+  if (!racers.size) tb.append(el('tr', {}, el('td', { colSpan: 7, className: 'muted', textContent: 'No registrations yet.' })));
   $('#count').textContent = racers.size;
 }
 
@@ -281,9 +282,9 @@ $('#refresh').onclick = load;
 $('#generate').onclick = async () => {
   const btn = $('#generate'), times = startTimes(); let n = 0;
   const rows = st.order.filter(it => it.t === 'b' || racers.has(it.id)).map(it => {
-    if (it.t === 'b') return ['', '', 'Break · ' + it.min + ' min', '', ''];
+    if (it.t === 'b') return ['', '', 'Break · ' + it.min + ' min', '', '', ''];
     const r = racers.get(it.id);
-    return [String(++n), fmt(times.get(it)), r.name, String(r.birth ?? ''), r.gender || ''];
+    return [String(++n), fmt(times.get(it)), r.name, String(r.birth ?? ''), r.gender || '', r.team || ''];
   });
   if (!n) { $('#upd').textContent = 'nothing to generate'; return; }
   btn.disabled = true; $('#upd').textContent = 'generating…';
@@ -307,12 +308,12 @@ async function load() {
     if (/^\s*</.test(text)) throw new Error('sheet not shared');
     const rows = parseCSV(text);
     const h = (rows.shift() || []).map(x => x.trim().toLowerCase());
-    const iT = h.findIndex(x => x.includes('timestamp')), iN = h.indexOf('name'), iB = h.findIndex(x => x.includes('birth')), iG = h.indexOf('gender');
+    const iT = h.findIndex(x => x.includes('timestamp')), iN = h.indexOf('name'), iB = h.findIndex(x => x.includes('birth')), iG = h.indexOf('gender'), iTm = h.indexOf('team');
     const m = new Map(); // a later submission with the same name replaces the earlier one
     for (const r of rows) {
       const name = (r[iN] || '').trim(); if (!name) continue;
       const by = String(r[iB] || '').match(/\d{4}/);
-      m.set(name.toLowerCase(), { id: name.toLowerCase(), name, birth: by ? +by[0] : '', gender: (r[iG] || '').trim(), reg: parseStamp(r[iT]), regText: (r[iT] || '').trim() });
+      m.set(name.toLowerCase(), { id: name.toLowerCase(), name, birth: by ? +by[0] : '', gender: (r[iG] || '').trim(), team: iTm >= 0 ? (r[iTm] || '').trim() : '', reg: parseStamp(r[iT]), regText: (r[iT] || '').trim() });
     }
     racers = m; loaded = true; reconcile(); save();
     $('#upd').textContent = 'loaded ' + new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });

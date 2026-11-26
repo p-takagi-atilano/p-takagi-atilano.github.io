@@ -53,7 +53,7 @@ tr.brk td{background:#fff4dc;color:#8a5a00;font-weight:600;text-align:center}
   </div>
   <div class="card" id="list" hidden>
     <table>
-      <thead><tr><th class="n">#</th><th>Start</th><th>Name</th><th class="n">Born</th><th class="n">Gender</th></tr></thead>
+      <thead><tr><th class="n">#</th><th>Start</th><th>Name</th><th class="n">Born</th><th class="n">Gender</th><th>Team</th></tr></thead>
       <tbody id="rows"></tbody>
     </table>
   </div>
@@ -85,8 +85,8 @@ async function load() {
     const tb = document.getElementById('rows'); tb.textContent = '';
     for (const r of rows) {
       const tr = document.createElement('tr');
-      if (!r[0]) { tr.className = 'brk'; const c = td(r[2] || 'Break'); c.colSpan = 5; tr.append(c); }
-      else tr.append(td(r[0], 'n'), td(r[1], 'start'), td(r[2]), td(r[3], 'n'), td(r[4], 'n'));
+      if (!r[0]) { tr.className = 'brk'; const c = td(r[2] || 'Break'); c.colSpan = 6; tr.append(c); }
+      else tr.append(td(r[0], 'n'), td(r[1], 'start'), td(r[2]), td(r[3], 'n'), td(r[4], 'n'), td(r[5] || ''));
       tb.append(tr);
     }
     const has = rows.some(r => r[0]);

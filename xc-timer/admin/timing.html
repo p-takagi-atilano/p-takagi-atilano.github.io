@@ -56,7 +56,8 @@ td.act{text-align:right;padding:4px 6px}
 .lapbtn{min-width:72px;min-height:48px;font-size:17px;font-weight:800;background:#d62828;color:#fff;border:2px solid #000;border-radius:10px}
 .lapbtn:active{transform:translateY(2px)}
 .lapbtn:disabled{background:var(--soft);color:var(--muted);opacity:1}
-@media (max-width:600px){.opt{display:none}th,td{padding:8px 4px}}
+td.team{white-space:normal;color:var(--muted);font-size:14px}
+@media (max-width:600px){th,td{padding:8px 4px}}
 tr.next td{background:var(--soft)}
 tr.brk td{background:var(--brk);color:var(--brk-ink);font-weight:600;text-align:center}
 tr:last-child td{border-bottom:0}
@@ -104,8 +105,8 @@ tr:last-child td{border-bottom:0}
     <h2 style="margin-bottom:6px">Start order</h2>
     <div class="wrap">
       <table>
-        <thead><tr><th class="n">#</th><th>Start</th><th>Name</th><th class="n opt">Born</th><th class="n opt">Gender</th><th class="n">Lap 1</th><th class="n">Lap 2</th><th></th></tr></thead>
-        <tbody id="rows"><tr><td colspan="8" class="muted">No race downloaded yet.</td></tr></tbody>
+        <thead><tr><th class="n">#</th><th>Start</th><th>Name</th><th>Team</th><th class="n">Lap 1</th><th class="n">Lap 2</th><th></th></tr></thead>
+        <tbody id="rows"><tr><td colspan="7" class="muted">No race downloaded yet.</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -175,7 +176,7 @@ async function download() {
     if (!starters.length) throw new Error('no start list generated yet');
     const base = toSec(starters[0][1]);
     st.list = rows.map(r => r[0]
-      ? { n: r[0], name: r[2] || '', birth: r[3] || '', gender: r[4] || '', off: toSec(r[1]) - base }
+      ? { n: r[0], name: r[2] || '', team: r[5] || '', off: toSec(r[1]) - base }
       : { brk: r[2] || 'Break', off: null });
     st.downloadedAt = Date.now(); save();
     flash('Start list downloaded ✓');
@@ -256,18 +257,18 @@ function render() {
   const tb = $('#rows'); tb.textContent = '';
   for (const x of st.list) {
     const tr = document.createElement('tr');
-    if (x.brk) { const c = td(x.brk); c.colSpan = 8; tr.className = 'brk'; tr.append(c); }
+    if (x.brk) { const c = td(x.brk); c.colSpan = 7; tr.className = 'brk'; tr.append(c); }
     else {
       tr.dataset.off = x.off; tr.dataset.n = x.n;
       const btn = document.createElement('button'); btn.className = 'lapbtn'; btn.textContent = 'Lap';
       btn.disabled = true; // enabled by tick() once the race is running and this athlete has started
       btn.onclick = () => lapPress(x);
       const act = td(''); act.className = 'act'; act.append(btn);
-      tr.append(td(x.n, 'n'), td('+' + dur(x.off * 1000), 't'), td(x.name), td(x.birth, 'n opt'), td(x.gender, 'n opt'), td('', 'n lap'), td('', 'n lap'), act);
+      tr.append(td(x.n, 'n'), td('+' + dur(x.off * 1000), 't'), td(x.name), td(x.team || '', 'team'), td('', 'n lap'), td('', 'n lap'), act);
     }
     tb.append(tr);
   }
-  if (!st.list.length) tb.innerHTML = '<tr><td colspan="8" class="muted">No race downloaded yet. Tap Download race while you have signal.</td></tr>';
+  if (!st.list.length) tb.innerHTML = '<tr><td colspan="7" class="muted">No race downloaded yet. Tap Download race while you have signal.</td></tr>';
   $('#totalCount').textContent = athletes().length;
   tick();
 }
