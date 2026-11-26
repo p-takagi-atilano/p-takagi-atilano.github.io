@@ -32,6 +32,9 @@ tr:last-child td{border-bottom:0}
 .soon{text-align:center;padding:48px 16px}
 .soon h2{font-size:22px;margin:0 0 6px}
 [hidden]{display:none!important}
+.bar{display:flex;justify-content:flex-end;margin-bottom:8px}
+#pdfBtn{font:inherit;font-size:14px;font-weight:600;color:#fff;background:#0b3d91;border:0;border-radius:8px;padding:8px 14px;cursor:pointer}
+#pdfBtn:disabled{opacity:.6}
 .loading{display:flex;justify-content:center;padding:48px 16px}
 .spin{width:28px;height:28px;border:3px solid var(--line);border-top-color:var(--pri);border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -52,6 +55,7 @@ tr.brk td{background:#fff4dc;color:#8a5a00;font-weight:600;text-align:center}
     <p class="muted">The start list will be posted here before the race.</p>
   </div>
   <div class="card" id="list" hidden>
+    <div class="bar"><button id="pdfBtn">Download PDF</button></div>
     <table>
       <thead><tr><th class="n">#</th><th>Start</th><th>Name</th><th class="n">Born</th><th class="n">Gender</th><th>Team</th></tr></thead>
       <tbody id="rows"></tbody>
@@ -76,12 +80,48 @@ function parseCSV(t) {
   return rows.filter(r => r.some(x => x.trim()));
 }
 function td(text, cls) { const e = document.createElement('td'); e.textContent = text; if (cls) e.className = cls; return e; }
+let lastRows = [];
+function loadScript(src) {
+  return new Promise((ok, fail) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = fail; document.head.append(s); });
+}
+// build a printable start list PDF with a tick-box column for checking athletes in
+document.getElementById('pdfBtn').onclick = async () => {
+  const btn = document.getElementById('pdfBtn');
+  btn.disabled = true; btn.textContent = 'Preparing…';
+  try {
+    if (!window.jspdf) {
+      await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+      await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js');
+    }
+    const doc = new window.jspdf.jsPDF({ unit: 'pt', format: 'letter' });
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(16);
+    doc.text('2026 Silver Star PNW Time Trial · Start List', 40, 48);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(90);
+    doc.text('Printed ' + new Date().toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }), 40, 64);
+    const body = lastRows.map(r => r[0]
+      ? [r[1], r[0], r[2], r[5] || '', '']
+      : [{ content: r[2] || 'Break', colSpan: 5, styles: { halign: 'center', fontStyle: 'bold', fillColor: [255, 244, 220], textColor: [138, 90, 0] } }]);
+    doc.autoTable({
+      startY: 78, head: [['Start', '#', 'Name', 'Team', 'Ready']], body,
+      theme: 'grid', styles: { fontSize: 12, cellPadding: 6, valign: 'middle' },
+      headStyles: { fillColor: [11, 61, 145], textColor: 255 },
+      columnStyles: { 0: { cellWidth: 70, fontStyle: 'bold' }, 1: { cellWidth: 36, halign: 'right' }, 4: { cellWidth: 50 } },
+      margin: { left: 40, right: 40 },
+    });
+    doc.save('start-list-2026-silver-star-pnw-tt.pdf');
+    btn.textContent = 'Download PDF';
+  } catch (e) {
+    btn.textContent = 'PDF failed. Tap to retry';
+  }
+  btn.disabled = false;
+};
 async function load() {
   try {
     const res = await fetch(URL_CSV, { cache: 'no-store' });
     const text = await res.text();
     if (!res.ok || /^\s*</.test(text)) throw new Error('unavailable');
     const rows = parseCSV(text); rows.shift(); // header
+    lastRows = rows;
     const tb = document.getElementById('rows'); tb.textContent = '';
     for (const r of rows) {
       const tr = document.createElement('tr');
