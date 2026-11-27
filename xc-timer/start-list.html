@@ -97,16 +97,14 @@ document.getElementById('pdfBtn').onclick = async () => {
     const doc = new window.jspdf.jsPDF({ unit: 'pt', format: 'letter' });
     doc.setFont('helvetica', 'bold'); doc.setFontSize(16);
     doc.text('2026 Riley Swanson Birthday Time Trial · Start List', 40, 48);
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(90);
-    doc.text('Printed ' + new Date().toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }), 40, 64);
     const body = lastRows.map(r => r[0]
-      ? [r[1], r[0], r[2], r[4] || '', '']
-      : [{ content: r[2] || 'Break', colSpan: 5, styles: { halign: 'center', fontStyle: 'bold', fillColor: [255, 244, 220], textColor: [138, 90, 0] } }]);
+      ? [r[0], r[2], r[4] || '', r[1]]
+      : [{ content: r[2] || 'Break', colSpan: 4, styles: { halign: 'center', fontStyle: 'bold', fillColor: [255, 244, 220], textColor: [138, 90, 0] } }]);
     doc.autoTable({
-      startY: 78, head: [['Start', '#', 'Name', 'Team', 'Ready']], body,
+      startY: 64, head: [['#', 'Name', 'Team', 'Start']], body,
       theme: 'grid', styles: { fontSize: 12, cellPadding: 6, valign: 'middle' },
       headStyles: { fillColor: [11, 61, 145], textColor: 255 },
-      columnStyles: { 0: { cellWidth: 70, fontStyle: 'bold' }, 1: { cellWidth: 36, halign: 'right' }, 4: { cellWidth: 50 } },
+      columnStyles: { 0: { cellWidth: 36, halign: 'right' }, 3: { cellWidth: 70, fontStyle: 'bold' } },
       margin: { left: 40, right: 40 },
     });
     doc.save('start-list-2026-riley-swanson-birthday-tt.pdf');
