@@ -47,7 +47,7 @@ button.reg{width:100%;border:0;cursor:pointer;font-family:inherit}
 </header>
 <main>
   <div class="card">
-    <div class="top"><h2>Registered (<span id="count">…</span>)</h2><span class="muted" id="upd"></span></div>
+    <div class="top"><h2>Registered (<span id="count">…</span>)</h2></div>
     <table>
       <thead><tr><th>Name</th><th class="n">Born</th><th>Team</th></tr></thead>
       <tbody id="rows"><tr><td colspan="3" class="muted">Loading…</td></tr></tbody>
@@ -108,7 +108,6 @@ async function load() {
     });
     if (!list.length) tb.innerHTML = '<tr><td colspan="3" class="muted">Nobody yet. Be the first!</td></tr>';
     $('#count').textContent = list.length;
-    $('#upd').textContent = 'updated ' + new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   } catch (e) {
     $('#count').textContent = '?';
     $('#rows').innerHTML = '<tr><td colspan="3" class="muted">Couldn’t load the list right now.</td></tr>';
