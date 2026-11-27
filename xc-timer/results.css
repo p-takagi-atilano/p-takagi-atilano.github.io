@@ -44,6 +44,7 @@ th.act{color:var(--pri)}
 td .pl{color:var(--muted);font-weight:500;font-size:13px}
 td.dnf{color:var(--muted);font-weight:600}
 th,td{white-space:nowrap}
+td.tm{white-space:normal;min-width:90px} /* long team names wrap instead of widening the table */
 main{max-width:920px}
 .fgroup{display:flex;flex-direction:column;gap:5px;margin-bottom:10px}
 .flabel{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.3px}

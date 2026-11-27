@@ -114,7 +114,7 @@ function render() {
 
   // header
   const head = $('#head'); head.textContent = '';
-  const cols = [['Rank', 'n'], ['#', 'n w'], ['Name', ''], ['team', 'w'], ['birth', 'n w'], ['gender', 'w'], ['Lap 1', 'n w'], ['Lap 2', 'n w'], ['Total', 'n']];
+  const cols = [['Rank', 'n'], ['Name', ''], ['team', 'w'], ['birth', 'n w'], ['gender', 'w'], ['Lap 1', 'n w'], ['Lap 2', 'n w'], ['Total', 'n']];
   for (const [k, cls = ''] of cols) {
     if (SORTABLE[k]) {
       const i = sort.findIndex(s => s.key === k);
@@ -127,19 +127,18 @@ function render() {
   const timeCell = (str, place) => { const c = el('td', { className: 'n t' }, str); if (place) c.append(' ', el('span', { className: 'pl', textContent: '(' + place + ')' })); return c; };
   for (const a of shown) {
     const lap = (s, p) => s ? s + (p ? ' (' + p + ')' : '') : '–';
-    const who = ['#' + a.bib, a.team, a.birth, a.gender].filter(x => x && x !== '#').join(' · ');
+    const who = [a.team, a.birth, a.gender].filter(Boolean).join(' · ');
     const tot = el('td', { className: a.total != null ? 'n t' : 'n dnf', textContent: a.totals });
     tot.append(el('div', { className: 'sub lp', textContent: 'L1 ' + lap(a.l1s, p1.get(a)) }), el('div', { className: 'sub lp', textContent: 'L2 ' + lap(a.l2s, p2.get(a)) }));
     const l1 = timeCell(a.l1s, p1.get(a)), l2 = timeCell(a.l2s, p2.get(a)); l1.classList.add('w'); l2.classList.add('w');
     tb.append(el('tr', {},
       el('td', { className: 'n rank', textContent: rank.get(a) || '' }),
-      el('td', { className: 'n w', textContent: a.bib }),
       el('td', { className: 'nm' }, a.name, el('div', { className: 'sub', textContent: who })),
-      el('td', { className: 'w', textContent: a.team }),
+      el('td', { className: 'w tm', textContent: a.team }),
       el('td', { className: 'n w', textContent: a.birth }),
       el('td', { className: 'w', textContent: a.gender }),
       l1, l2, tot));
   }
-  if (!shown.length) tb.append(el('tr', {}, el('td', { colSpan: 9, className: 'muted', textContent: 'Nobody matches.' })));
+  if (!shown.length) tb.append(el('tr', {}, el('td', { colSpan: 8, className: 'muted', textContent: 'Nobody matches.' })));
 }
 load(); setInterval(load, 60000);
