@@ -1,0 +1,63 @@
+/* Shared by results.html (public) and admin/results.html. */
+:root{--bg:#f4f6f9;--card:#fff;--ink:#0d1420;--muted:#5a6575;--line:#d5dbe4;--pri:#0b3d91;--soft:#e8eef8}
+@media (prefers-color-scheme:dark){:root{--bg:#0e131b;--card:#161d28;--ink:#e8edf5;--muted:#9aa6b8;--line:#2a3445;--pri:#8fb3ff;--soft:#1f2a3c}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+header{background:#0b3d91;color:#fff;padding:calc(18px + env(safe-area-inset-top)) 16px 0}
+header h1{margin:0;font-size:24px}
+nav{display:flex;gap:4px;margin-top:14px;overflow-x:auto}
+nav a{color:#cfdcf5;text-decoration:none;font-weight:600;font-size:15px;padding:10px 16px;border-radius:10px 10px 0 0;white-space:nowrap}
+nav a.on{background:var(--bg);color:var(--pri)}
+main{max-width:640px;margin:0 auto;padding:16px}
+.reg{display:block;text-align:center;background:#d62828;color:#fff;text-decoration:none;font-weight:800;font-size:20px;padding:16px;border-radius:14px;margin:0 0 16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+h2{font-size:17px;margin:0}
+.muted{color:var(--muted);font-size:13px}
+table{width:100%;border-collapse:collapse;font-size:15px}
+th,td{text-align:left;padding:9px 6px;border-bottom:1px solid var(--line)}
+th{font-size:12px;text-transform:uppercase;letter-spacing:.3px;color:var(--muted)}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+tr:last-child td{border-bottom:0}
+.num{display:inline-block;min-width:1.8em;color:var(--muted)}
+.soon{text-align:center;padding:48px 16px}
+.soon h2{font-size:22px;margin:0 0 6px}
+[hidden]{display:none!important}
+td.rank{font-weight:800}
+td.t{font-variant-numeric:tabular-nums;font-weight:600}
+.wrap{overflow-x:auto;margin:0 -6px}
+#pdfBtn{font:inherit;font-size:14px;font-weight:600;color:#fff;background:#0b3d91;border:0;border-radius:8px;padding:8px 14px;cursor:pointer}
+#pdfBtn:disabled{opacity:.6}
+.loading{display:flex;justify-content:center;padding:48px 16px}
+.spin{width:28px;height:28px;border:3px solid var(--line);border-top-color:var(--pri);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+td.start{font-variant-numeric:tabular-nums;font-weight:600}
+tr.brk td{background:#fff4dc;color:#8a5a00;font-weight:600;text-align:center}
+@media (prefers-color-scheme:dark){tr.brk td{background:#2e2614;color:#f0c46a}}
+.sbtn{font:inherit;font-size:14px;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 12px;min-height:40px;cursor:pointer}
+.sortbar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:8px;font-size:14px}
+.chip{display:inline-flex;align-items:center;gap:4px;background:var(--soft);color:var(--pri);border-radius:99px;padding:3px 6px 3px 10px;font-weight:600}
+.chip button{font:inherit;border:0;background:transparent;color:inherit;padding:0 4px;cursor:pointer}
+th.s{cursor:pointer;user-select:none}
+th.s:hover{color:var(--ink)}
+th.act{color:var(--pri)}
+td .pl{color:var(--muted);font-weight:500;font-size:13px}
+td.dnf{color:var(--muted);font-weight:600}
+th,td{white-space:nowrap}
+main{max-width:920px}
+.fgroup{display:flex;flex-direction:column;gap:5px;margin-bottom:10px}
+.flabel{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.3px}
+.pills{display:flex;flex-wrap:wrap;gap:6px}
+.pill{font:inherit;font-size:14px;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:99px;padding:6px 12px;min-height:36px;cursor:pointer}
+.pill.on{background:var(--pri);border-color:var(--pri);color:#fff}
+@media (prefers-color-scheme:dark){.pill.on{color:#0e131b}}
+#q{font:inherit;font-size:16px;width:100%;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-height:42px}
+.sub{display:none;color:var(--muted);font-size:12.5px;font-weight:400;margin-top:2px;white-space:normal}
+/* phones: Rank | Skier (bib · team · born underneath) | Time (laps underneath) so nothing scrolls sideways */
+@media (max-width:700px){
+  .w{display:none}
+  .sub{display:block}
+  td.nm{white-space:normal;width:100%}
+  .sub.lp{white-space:nowrap;margin-top:1px}
+  .wrap{overflow-x:visible}
+}

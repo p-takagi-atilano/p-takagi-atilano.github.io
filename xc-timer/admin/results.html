@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Results · Admin · 2026 Riley Swanson Birthday Time Trial</title>
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#0b3d91">
+<link rel="icon" href="../icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../icon-192.png">
+<link rel="stylesheet" href="../results.css">
+</head>
+<body>
+<header>
+  <h1>2026 Riley Swanson Birthday Time Trial · Admin</h1>
+  <nav><a href="./">Start List Creator</a><a href="timing.html">Race Timing</a><a class="on" href="results.html">Results</a></nav>
+</header>
+<main>
+  <div class="card loading" id="loading"><span class="spin"></span></div>
+  <div class="card soon" id="soon" hidden>
+    <h2>Coming soon</h2>
+    <p class="muted">Results will be posted here after the race.</p>
+  </div>
+  <div class="card" id="list" hidden>
+    <div class="fgroup"><input id="q" type="search" placeholder="Search by name" autocomplete="off" enterkeyhint="search"></div>
+    <div class="fgroup"><span class="flabel">Team</span><div class="pills" id="fTeam"></div></div>
+    <div class="fgroup"><span class="flabel">Birth year</span><div class="pills" id="fBirth"></div></div>
+    <div class="fgroup"><span class="flabel">Gender</span><div class="pills" id="fGender"></div></div>
+    <div class="fgroup"><div><button class="sbtn" id="clearF" hidden>Clear filters</button></div></div>
+    <div class="sortbar" id="sortbar"></div>
+    <div class="wrap">
+      <table>
+        <thead><tr id="head"></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+<script src="../results.js"></script>
+</body>
+</html>
