@@ -40,8 +40,8 @@ tr:last-child td{border-bottom:0}
   <div class="card">
     <div class="top"><h2>Registered (<span id="count">…</span>)</h2><span class="muted" id="upd"></span></div>
     <table>
-      <thead><tr><th>Name</th><th class="n">Born</th><th class="n">Gender</th><th>Team</th></tr></thead>
-      <tbody id="rows"><tr><td colspan="4" class="muted">Loading…</td></tr></tbody>
+      <thead><tr><th>Name</th><th class="n">Born</th><th>Team</th></tr></thead>
+      <tbody id="rows"><tr><td colspan="3" class="muted">Loading…</td></tr></tbody>
     </table>
   </div>
   <a class="reg" href="https://docs.google.com/forms/d/e/1FAIpQLSdtr5MrfNsVe-3TSQ61Qxk4jsclQG5V2u6C5aetgGZZ_U9YAg/viewform" target="_blank" rel="noopener">Register</a>
@@ -75,7 +75,7 @@ async function load() {
     if (/^\s*</.test(text)) throw new Error('sheet not shared');
     const rows = parseCSV(text);
     const h = (rows.shift() || []).map(x => x.trim().toLowerCase());
-    const iN = h.indexOf('name'), iB = h.findIndex(x => x.includes('birth')), iG = h.indexOf('gender'), iTm = h.indexOf('team');
+    const iN = h.indexOf('name'), iB = h.findIndex(x => x.includes('birth')), iTm = h.indexOf('team');
     // one entry per name; a later submission replaces an earlier one
     const byName = new Map();
     for (const r of rows) { const n = (r[iN] || '').trim(); if (n) byName.set(n.toLowerCase(), r); }
@@ -85,15 +85,15 @@ async function load() {
       const tr = document.createElement('tr');
       const name = cell(''); const num = document.createElement('span'); num.className = 'num'; num.textContent = (i + 1) + '.';
       name.append(num, ' ' + r[iN].trim());
-      tr.append(name, cell(iB >= 0 ? r[iB] : '', 'n'), cell(iG >= 0 ? r[iG] : '', 'n'), cell(iTm >= 0 ? (r[iTm] || '').trim() : ''));
+      tr.append(name, cell(iB >= 0 ? r[iB] : '', 'n'), cell(iTm >= 0 ? (r[iTm] || '').trim() : ''));
       tb.append(tr);
     });
-    if (!list.length) tb.innerHTML = '<tr><td colspan="4" class="muted">Nobody yet. Be the first!</td></tr>';
+    if (!list.length) tb.innerHTML = '<tr><td colspan="3" class="muted">Nobody yet. Be the first!</td></tr>';
     $('#count').textContent = list.length;
     $('#upd').textContent = 'updated ' + new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   } catch (e) {
     $('#count').textContent = '?';
-    $('#rows').innerHTML = '<tr><td colspan="4" class="muted">Couldn’t load the list right now.</td></tr>';
+    $('#rows').innerHTML = '<tr><td colspan="3" class="muted">Couldn’t load the list right now.</td></tr>';
   }
 }
 load(); setInterval(load, 30000);

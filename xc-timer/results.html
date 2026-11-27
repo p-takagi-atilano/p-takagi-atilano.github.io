@@ -73,7 +73,6 @@ th,td{white-space:nowrap}
     <div class="filters">
       <label>Team<select id="fTeam"></select></label>
       <label>Birth year<select id="fBirth"></select></label>
-      <label>Gender<select id="fGender"></select></label>
       <button class="sbtn" id="clearF" hidden>Clear filters</button>
     </div>
     <div class="sortbar" id="sortbar"></div>
@@ -109,10 +108,10 @@ function toMs(s) {
   return m ? ((+(m[1] || 0) * 60 + +m[2]) * 60 + +m[3]) * 1000 : null;
 }
 
-let athletes = []; // {bib, name, team, birth, gender, l1, l2, total, l1s, l2s, totals}
-const filters = { team: '', birth: '', gender: '' };
+let athletes = []; // {bib, name, team, birth, l1, l2, total, l1s, l2s, totals}
+const filters = { team: '', birth: '' };
 let sort = []; // [{key, dir}] chain; empty = by rank
-const SORTABLE = { team: { label: 'Team', type: 'text' }, birth: { label: 'Birth year', type: 'num' }, gender: { label: 'Gender', type: 'text' } };
+const SORTABLE = { team: { label: 'Team', type: 'text' }, birth: { label: 'Birth year', type: 'num' } };
 
 async function load() {
   let rows = [], head = [];
@@ -124,7 +123,7 @@ async function load() {
   const col = name => head.indexOf(name);
   const get = (r, name) => { const i = col(name); return i >= 0 ? (r[i] || '').trim() : ''; };
   athletes = rows.map(r => ({
-    bib: get(r, '#'), name: get(r, 'Name'), team: get(r, 'Team'), birth: get(r, 'Birth year'), gender: get(r, 'Gender'),
+    bib: get(r, '#'), name: get(r, 'Name'), team: get(r, 'Team'), birth: get(r, 'Birth year'),
     l1s: get(r, 'Lap 1'), l2s: get(r, 'Lap 2'), totals: get(r, 'Total'),
     l1: toMs(get(r, 'Lap 1')), l2: toMs(get(r, 'Lap 2')), total: toMs(get(r, 'Total')),
   }));
@@ -144,12 +143,11 @@ function fillFilters() {
     sel.value = filters[key];
     sel.disabled = vals.length === 0;
   };
-  opts('team', $('#fTeam')); opts('birth', $('#fBirth'), true); opts('gender', $('#fGender'));
+  opts('team', $('#fTeam')); opts('birth', $('#fBirth'), true);
 }
 $('#fTeam').onchange = e => { filters.team = e.target.value; render(); };
 $('#fBirth').onchange = e => { filters.birth = e.target.value; render(); };
-$('#fGender').onchange = e => { filters.gender = e.target.value; render(); };
-$('#clearF').onclick = () => { filters.team = filters.birth = filters.gender = ''; fillFilters(); render(); };
+$('#clearF').onclick = () => { filters.team = filters.birth = ''; fillFilters(); render(); };
 
 // place of each value among the shown athletes (ties share a place); null for no time
 function places(list, key) {
@@ -170,8 +168,8 @@ function cmpKey(a, b, key, dir) {
 function el(tag, props = {}, ...kids) { const e = document.createElement(tag); Object.assign(e, props); e.append(...kids); return e; }
 
 function render() {
-  const shown = athletes.filter(a => (!filters.team || a.team === filters.team) && (!filters.birth || a.birth === filters.birth) && (!filters.gender || a.gender === filters.gender));
-  $('#clearF').hidden = !(filters.team || filters.birth || filters.gender);
+  const shown = athletes.filter(a => (!filters.team || a.team === filters.team) && (!filters.birth || a.birth === filters.birth));
+  $('#clearF').hidden = !(filters.team || filters.birth);
   const rank = places(shown, 'total'), p1 = places(shown, 'l1'), p2 = places(shown, 'l2');
   const byRank = (a, b) => (a.total == null) - (b.total == null) || (a.total ?? 0) - (b.total ?? 0) || (+a.bib || 0) - (+b.bib || 0);
   shown.sort((a, b) => { for (const s of sort) { const c = cmpKey(a, b, s.key, s.dir); if (c) return c; } return byRank(a, b); });
@@ -179,7 +177,7 @@ function render() {
   // sort chips
   const bar = $('#sortbar'); bar.textContent = '';
   bar.append(el('span', { className: 'muted', textContent: 'Sort:' }));
-  if (!sort.length) bar.append(el('span', { className: 'muted', textContent: 'rank (tap Team, Birth year or Gender to sort)' }));
+  if (!sort.length) bar.append(el('span', { className: 'muted', textContent: 'rank (tap Team or Birth year to sort)' }));
   sort.forEach((s, i) => {
     if (i) bar.append(el('span', { className: 'muted', textContent: 'then' }));
     const c = SORTABLE[s.key];
@@ -192,7 +190,7 @@ function render() {
 
   // header
   const head = $('#head'); head.textContent = '';
-  const cols = [['Rank', 'n'], ['#', 'n'], ['Name', ''], ['team'], ['birth', 'n'], ['gender'], ['Lap 1', 'n'], ['Lap 2', 'n'], ['Total', 'n']];
+  const cols = [['Rank', 'n'], ['#', 'n'], ['Name', ''], ['team'], ['birth', 'n'], ['Lap 1', 'n'], ['Lap 2', 'n'], ['Total', 'n']];
   for (const [k, cls = ''] of cols) {
     if (SORTABLE[k]) {
       const i = sort.findIndex(s => s.key === k);
@@ -210,11 +208,10 @@ function render() {
       el('td', { textContent: a.name }),
       el('td', { textContent: a.team }),
       el('td', { className: 'n', textContent: a.birth }),
-      el('td', { textContent: a.gender }),
       timeCell(a.l1s, p1.get(a)), timeCell(a.l2s, p2.get(a)),
       a.total != null ? el('td', { className: 'n t', textContent: a.totals }) : el('td', { className: 'n dnf', textContent: a.totals })));
   }
-  if (!shown.length) tb.append(el('tr', {}, el('td', { colSpan: 9, className: 'muted', textContent: 'Nobody matches these filters.' })));
+  if (!shown.length) tb.append(el('tr', {}, el('td', { colSpan: 8, className: 'muted', textContent: 'Nobody matches these filters.' })));
 }
 load(); setInterval(load, 60000);
 </script>
