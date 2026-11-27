@@ -88,6 +88,13 @@ td.lap.sel{background:var(--pri);color:#fff;border-radius:6px;text-decoration:no
 .lapmenu button+button{border-top:1px solid var(--line)}
 .lapmenu button:active{background:var(--soft)}
 .lapmenu .ic{width:1.2em;text-align:center;color:var(--muted)}
+.addbtn{display:block;width:100%;min-height:52px;font-size:17px;font-weight:700;color:var(--pri);background:transparent;border:2px dashed var(--line);border-radius:12px;margin-bottom:14px}
+.addform{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.addform label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted)}
+.addform input{font:inherit;font-size:16px;min-height:44px;padding:6px 8px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);width:100%}
+.addform .row{grid-column:1/-1;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.addform .row .grow{flex:1}
+td.act .danger{min-width:40px;min-height:48px;margin-right:6px;padding:0 10px}
 [hidden]{display:none!important}
 </style>
 </head>
@@ -152,6 +159,19 @@ td.lap.sel{background:var(--pri);color:#fff;border-radius:6px;text-decoration:no
     </div>
   </div>
 
+  <!-- add a skier on race day: appended to the end of the start order -->
+  <div id="addBox" hidden>
+    <button id="addBtn" class="addbtn" aria-label="Add a skier to the end of the start order">+ Add skier</button>
+    <form class="card addform" id="addForm" hidden autocomplete="off">
+      <h2 style="grid-column:1/-1">Add skier <span class="muted" id="addInfo" style="font-weight:400"></span></h2>
+      <label style="grid-column:1/-1">Name<input id="addName" placeholder="Optional"></label>
+      <label style="grid-column:1/-1">Team<input id="addTeam" placeholder="Optional"></label>
+      <label>Birth year<input id="addBirth" inputmode="numeric" placeholder="Optional"></label>
+      <label>Gender<input id="addGender" placeholder="Optional"></label>
+      <div class="row"><span class="muted grow">All fields are optional.</span><button type="button" id="addCancel">Cancel</button><button type="submit" class="upbtn">Add</button></div>
+    </form>
+  </div>
+
   <!-- times recorded with the Unknown button, waiting to be matched to an athlete -->
   <div class="card unkcard" id="unkCard" hidden>
     <div class="unkhead">
@@ -176,7 +196,8 @@ const WEB_APP = 'https://script.google.com/macros/s/AKfycbz0TD1XClbOVJHJrqoy9Ee8
 const LEAD_MS = 30000; // time from pressing Start race to the first athlete
 const $ = s => document.querySelector(s);
 
-// st.list: [{n, name, birth, gender, off}] off = seconds after the first start; breaks: {brk:'Break · 5 min', off}
+// st.list: [{n, name, birth, gender, team, off, added?}] off = seconds after the first start; added = put in on the phone with + Add skier
+// breaks: {brk:'Break · 5 min', off}
 let st = { list: [], downloadedAt: 0, raceStart: 0, laps: {}, ended: 0, results: null };
 // results: { endedAt, rows: [[rank, n, name, team, lap1, lap2, total]], uploadedAt }
 const LAPS = 2;
@@ -215,10 +236,18 @@ const athletes = () => st.list.filter(x => !x.brk);
 const firstStart = () => st.raceStart + LEAD_MS;
 
 /* ---------- download ---------- */
-let downloading = false;
+let downloading = false, dlArmed = false, dlTimer;
 async function download() {
   if (st.raceStart) { flash('Reset the race before downloading a new start list.'); return; }
   if (downloading) return;
+  const added = athletes().filter(a => a.added).length;
+  if (added && !dlArmed) { // two-tap confirm, like Reset race: a new start list replaces skiers added on the phone
+    dlArmed = true; $('#dl').textContent = 'Tap again to replace';
+    flash(`Downloading replaces the start list and removes ${added} skier${added > 1 ? 's' : ''} added on this phone.`);
+    dlTimer = setTimeout(() => { dlArmed = false; render(); }, 4000);
+    return;
+  }
+  clearTimeout(dlTimer); dlArmed = false;
   downloading = true; $('#dl').disabled = true; $('#dl').textContent = 'Downloading…';
   try {
     const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 10000);
@@ -425,6 +454,61 @@ function removeLap(n, t, toUnassigned) {
 document.addEventListener('click', e => { if (menuFor && !lapMenu.contains(e.target)) closeLapMenu(); });
 addEventListener('resize', closeLapMenu);
 
+// + Add skier: append to the end of the start order (works offline, before/during/after the race)
+function startInterval() { // most common gap between consecutive starters (no break between them)
+  const gaps = new Map(); let prev = null, last2 = [];
+  for (const x of st.list) {
+    if (x.brk) { prev = null; continue; }
+    if (prev && x.off > prev.off) { const g = x.off - prev.off; gaps.set(g, (gaps.get(g) || 0) + 1); }
+    prev = x;
+  }
+  let best = 0, cnt = 0;
+  for (const [g, c] of gaps) if (c > cnt || (c === cnt && g < best)) { best = g; cnt = c; }
+  if (best) return best;
+  const a = athletes(); const g = a.length > 1 ? a[a.length - 1].off - a[a.length - 2].off : 0;
+  return g > 0 ? g : 30;
+}
+function nextBib() {
+  const ns = athletes().map(a => parseInt(a.n, 10)).filter(Number.isFinite);
+  let n = (ns.length ? Math.max(...ns) : 0) + 1;
+  while (athletes().some(a => String(a.n) === String(n))) n++;
+  return String(n);
+}
+function addOff() {
+  const a = athletes(), iv = startInterval();
+  let off = a.length ? Math.max(...a.map(x => x.off)) + iv : 0;
+  if (st.raceStart && !st.ended) { // that slot may already be gone: start them on the next slot at least 30 s from now
+    const minOff = Math.ceil((Date.now() + LEAD_MS - firstStart()) / 1000);
+    if (off < minOff) off = Math.ceil(minOff / iv) * iv;
+  }
+  return off;
+}
+function openAdd(show) {
+  $('#addForm').hidden = !show; $('#addBtn').hidden = show;
+  if (!show) return;
+  for (const id of ['#addName', '#addTeam', '#addBirth', '#addGender']) $(id).value = '';
+  $('#addInfo').textContent = '· #' + nextBib() + ', starts +' + dur(addOff() * 1000);
+  $('#addName').focus();
+}
+$('#addBtn').onclick = () => openAdd(true);
+$('#addCancel').onclick = () => openAdd(false);
+$('#addForm').onsubmit = e => {
+  e.preventDefault();
+  const n = nextBib(), v = id => $(id).value.trim();
+  st.list.push({ n, name: v('#addName') || 'Skier #' + n, birth: v('#addBirth'), gender: v('#addGender'), team: v('#addTeam'), off: addOff(), added: true });
+  if (st.ended && st.results) { st.results.rows = computeResults(); st.results.uploadedAt = 0; } // fix results after the race
+  save(); openAdd(false); render();
+  flash('Added #' + n + ' to the end of the start order ✓');
+  if (st.ended) upload();
+};
+const rmArmed = new Set();
+function removeAdded(x, btn) { // only skiers added on this phone, and only while they have no times
+  if ((st.laps[x.n] || []).length || st.ended) return;
+  if (!rmArmed.has(x.n)) { rmArmed.add(x.n); btn.textContent = 'Tap again'; setTimeout(() => { rmArmed.delete(x.n); render(); }, 3000); return; }
+  rmArmed.delete(x.n);
+  st.list = st.list.filter(y => y !== x); delete st.laps[x.n]; save(); render();
+}
+
 function lapPress(a) {
   if (!st.raceStart || st.ended) return;
   const now = Date.now(), start = firstStart() + a.off * 1000;
@@ -489,7 +573,7 @@ function render() {
   else { rp.className = 'pill'; rp.textContent = 'Race not downloaded'; }
   $('#newPill').hidden = !(has && newer && !racing);
   $('#dl').hidden = racing;
-  if (!downloading) $('#dl').textContent = has ? 'Re-download race' : 'Download race';
+  if (!downloading && !dlArmed) $('#dl').textContent = has ? 'Re-download race' : 'Download race';
   $('#pre').hidden = racing; $('#live').hidden = !live;
   $('#startBtn').disabled = !has;
   $('#preMsg').textContent = has ? 'The first athlete starts 30 seconds after you press Start race.' : 'Download the race first. Do it while you have signal; after that no connection is needed.';
@@ -497,6 +581,7 @@ function render() {
   $('#resetBtn').hidden = !racing;
   $('#endBtn').hidden = !live;
   $('#orderCard').hidden = !!st.ended; // start order isn't needed once the race is over
+  $('#addBox').hidden = !has;
   renderResults(live);
   renderUnknown();
   // start order table
@@ -509,7 +594,12 @@ function render() {
       const btn = document.createElement('button'); btn.className = 'lapbtn'; btn.textContent = 'Lap';
       btn.disabled = true; // enabled by tick() once the race is running and this athlete has started
       btn.onclick = () => lapPress(x);
-      const act = td(''); act.className = 'act'; act.append(btn);
+      const act = td(''); act.className = 'act';
+      if (x.added && !(st.laps[x.n] || []).length) {
+        const rm = document.createElement('button'); rm.className = 'danger'; rm.title = 'Remove this added skier';
+        rm.textContent = rmArmed.has(x.n) ? 'Tap again' : '✕'; rm.onclick = () => removeAdded(x, rm); act.append(rm);
+      }
+      act.append(btn);
       const c1 = td('', 'n lap'), c2 = td('', 'n lap');
       [c1, c2].forEach((c, k) => c.onclick = e => { if (!c.classList.contains('rec')) return; e.stopPropagation(); openLapMenu(c, x.n, k, 'order'); });
       tr.append(td(x.n, 'n'), td('+' + dur(x.off * 1000), 't'), td(x.name), td(x.team || '', 'team'), c1, c2, act);
@@ -570,6 +660,7 @@ function tick() {
     const fin = laps.length >= LAPS;
     btn.disabled = now < start || fin || !!st.ended;
     btn.textContent = fin ? '✓' : 'Lap';
+    tr.querySelector('td.act .danger')?.toggleAttribute('hidden', laps.length > 0 || !!st.ended); // remove only while no times
     tr.classList.toggle('fin', fin);
     tr.classList.toggle('next', off === nextOff && !st.ended);
   }
