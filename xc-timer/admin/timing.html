@@ -59,6 +59,9 @@ td.act{text-align:right;padding:4px 6px}
 td.team{white-space:normal;color:var(--muted);font-size:14px}
 @media (max-width:600px){th,td{padding:8px 4px}}
 tr.next td{background:var(--soft)}
+.grip{width:26px;padding:0 2px!important;text-align:center;color:var(--muted);font-size:18px;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}
+tr.dragging td{background:var(--soft);opacity:.7}
+body.drag{cursor:grabbing;user-select:none;-webkit-user-select:none}
 tr.brk td{background:var(--brk);color:var(--brk-ink);font-weight:600;text-align:center}
 tr:last-child td{border-bottom:0}
 .wrap{overflow-x:auto;margin:0 -6px}
@@ -153,8 +156,8 @@ td.act .danger{min-width:40px;min-height:48px;margin-right:6px;padding:0 10px}
     <h2 style="margin-bottom:6px">Start order</h2>
     <div class="wrap">
       <table>
-        <thead><tr><th class="n">#</th><th>Start</th><th>Name</th><th>Team</th><th class="n">Lap 1</th><th class="n">Lap 2</th><th></th></tr></thead>
-        <tbody id="rows"><tr><td colspan="7" class="muted">No race downloaded yet.</td></tr></tbody>
+        <thead><tr><th></th><th class="n">#</th><th>Start</th><th>Name</th><th>Team</th><th class="n">Lap 1</th><th class="n">Lap 2</th><th></th></tr></thead>
+        <tbody id="rows"><tr><td colspan="8" class="muted">No race downloaded yet.</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -564,6 +567,56 @@ function renderResults(live) {
   }
 }
 function td(text, cls) { const e = document.createElement('td'); e.textContent = text; if (cls) e.className = cls; return e; }
+/* ---------- drag to change the start order (only skiers who haven't started) ---------- */
+// A skier can move until 10 s before their start, as long as they have no lap times and the race hasn't ended.
+// Start slots (times) stay where they are; skiers swap into them. Breaks stay put. Bibs stay with the skier.
+const LOCK_MS = 10000;
+function movable(x) {
+  if (!x || x.brk || st.ended || (st.laps[x.n] || []).length) return false;
+  return !st.raceStart || firstStart() + x.off * 1000 > Date.now() + LOCK_MS;
+}
+let drag = null;
+function startDrag(e, row) {
+  e.preventDefault();
+  drag = { row, moved: false };
+  row.classList.add('dragging'); document.body.classList.add('drag');
+  document.addEventListener('pointermove', onDrag);
+  document.addEventListener('pointerup', endDrag, { once: true });
+  document.addEventListener('pointercancel', endDrag, { once: true });
+}
+function onDrag(e) {
+  if (!drag || !drag.row.isConnected) return;
+  const rows = [...$('#rows').children].filter(r => r !== drag.row);
+  // can't go above anyone who is locked (started / about to start)
+  let min = 0;
+  rows.forEach((r, i) => { if (r.dataset.n && !movable(athletes().find(a => a.n == r.dataset.n))) min = i + 1; });
+  let to = rows.length;
+  for (let i = 0; i < rows.length; i++) { const b = rows[i].getBoundingClientRect(); if (e.clientY < b.top + b.height / 2) { to = i; break; } }
+  to = Math.max(to, min);
+  if (rows[to] !== drag.row.nextSibling) { $('#rows').insertBefore(drag.row, rows[to] || null); drag.moved = true; }
+  if (e.clientY < 60) window.scrollBy(0, -12); else if (e.clientY > innerHeight - 60) window.scrollBy(0, 12);
+}
+function endDrag() {
+  document.removeEventListener('pointermove', onDrag);
+  document.body.classList.remove('drag');
+  const d = drag; drag = null;
+  if (!d) return;
+  d.row.classList.remove('dragging');
+  if (d.moved && d.row.isConnected) {
+    const order = [...$('#rows').children].map(r => r.dataset.n).filter(Boolean); // new order of bibs
+    const slots = st.list.map((x, i) => i).filter(i => movable(st.list[i]));  // positions that can change
+    const moving = slots.map(i => st.list[i]);
+    const newSeq = order.map(n => moving.find(x => x.n == n)).filter(Boolean);
+    if (newSeq.length !== moving.length) flash('Too late: someone started during the drag. Order not changed.');
+    else {
+      const offs = slots.map(i => st.list[i].off); // slot times stay in place
+      slots.forEach((i, k) => { st.list[i] = newSeq[k]; newSeq[k].off = offs[k]; });
+      save();
+    }
+  }
+  render();
+}
+
 function render() {
   const has = athletes().length > 0, racing = !!st.raceStart, live = racing && !st.ended;
     const rp = $('#racePill');
@@ -587,7 +640,7 @@ function render() {
   const tb = $('#rows'); tb.textContent = '';
   for (const x of st.list) {
     const tr = document.createElement('tr');
-    if (x.brk) { const c = td(x.brk); c.colSpan = 7; tr.className = 'brk'; tr.append(c); }
+    if (x.brk) { const c = td(x.brk); c.colSpan = 8; tr.className = 'brk'; tr.append(c); }
     else {
       tr.dataset.off = x.off; tr.dataset.n = x.n;
       const btn = document.createElement('button'); btn.className = 'lapbtn'; btn.textContent = 'Lap';
@@ -601,11 +654,13 @@ function render() {
       act.append(btn);
       const c1 = td('', 'n lap'), c2 = td('', 'n lap');
       [c1, c2].forEach((c, k) => c.onclick = e => { if (!c.classList.contains('rec')) return; e.stopPropagation(); openLapMenu(c, x.n, k, 'order'); });
-      tr.append(td(x.n, 'n'), td('+' + dur(x.off * 1000), 't'), td(x.name), td(x.team || '', 'team'), c1, c2, act);
+      const grip = td(movable(x) ? '⠿' : '', 'grip'); grip.title = 'Drag to change start order';
+      grip.addEventListener('pointerdown', e => { if (movable(x)) startDrag(e, tr); });
+      tr.append(grip, td(x.n, 'n'), td('+' + dur(x.off * 1000), 't'), td(x.name), td(x.team || '', 'team'), c1, c2, act);
     }
     tb.append(tr);
   }
-  if (!st.list.length) tb.innerHTML = '<tr><td colspan="7" class="muted">No race downloaded yet. Tap Download race while you have signal.</td></tr>';
+  if (!st.list.length) tb.innerHTML = '<tr><td colspan="8" class="muted">No race downloaded yet. Tap Download race while you have signal.</td></tr>';
   $('#totalCount').textContent = athletes().length;
   tick();
 }
@@ -660,6 +715,7 @@ function tick() {
     btn.disabled = now < start || fin || !!st.ended;
     btn.textContent = fin ? '✓' : 'Lap';
     tr.querySelector('td.act .danger')?.toggleAttribute('hidden', laps.length > 0 || !!st.ended); // remove only while no times
+    const g = tr.querySelector('td.grip'); if (g && g.textContent && !movable(athletes().find(a => a.n == tr.dataset.n))) g.textContent = '';
     tr.classList.toggle('fin', fin);
     tr.classList.toggle('next', off === nextOff && !st.ended);
   }
