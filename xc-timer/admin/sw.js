@@ -1,6 +1,6 @@
 // Keeps the Race Timing page usable with no signal.
 // Network first (3 s timeout) so updates arrive when online; saved copy otherwise.
-const CACHE = 'xc-timing-v6';
+const CACHE = 'xc-timing-v7';
 const FILES = ['timing.html', 'offline.html', '../icon.svg', '../icon-192.png'];
 
 self.addEventListener('install', e => {
