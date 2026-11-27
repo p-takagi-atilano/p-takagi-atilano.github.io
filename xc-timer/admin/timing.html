@@ -21,9 +21,6 @@ header{background:#0b3d91;color:#fff;padding:calc(18px + env(safe-area-inset-top
 nav{display:flex;gap:4px;margin-top:14px;overflow-x:auto}
 nav a{color:#cfdcf5;text-decoration:none;font-weight:600;font-size:15px;padding:10px 16px;border-radius:10px 10px 0 0;white-space:nowrap}
 nav a.on{background:var(--bg);color:var(--pri)}
-/* opened from the home-screen icon: no tab bar, so nobody can wander to a page that needs signal (there's no back button) */
-html.app nav{display:none}
-html.app header{padding-bottom:14px}
 header h1{margin:0;font-size:24px}
 main{max-width:820px;margin:0 auto;padding:16px 16px calc(24px + env(safe-area-inset-bottom))}
 .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:14px}
@@ -105,7 +102,6 @@ td.act .danger{min-width:40px;min-height:48px;margin-right:6px;padding:0 10px}
 </style>
 </head>
 <body>
-<script>if (navigator.standalone || matchMedia('(display-mode: standalone)').matches) document.documentElement.classList.add('app');</script>
 <header>
   <h1>2026 Riley Swanson Birthday Time Trial · Admin</h1>
   <nav><a href="./">Start List Creator</a><a class="on" href="timing.html">Race Timing</a><a href="finalize.html">Finalize Race</a></nav>
