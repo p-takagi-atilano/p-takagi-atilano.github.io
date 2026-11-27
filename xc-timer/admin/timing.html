@@ -80,7 +80,7 @@ tr:last-child td{border-bottom:0}
 td.rank{font-weight:800}
 td.lap.rec{cursor:pointer;text-decoration:underline dotted var(--muted);text-underline-offset:3px}
 td.lap.sel{background:var(--pri);color:#fff;border-radius:6px;text-decoration:none}
-.lapmenu{position:absolute;z-index:50;width:240px;background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.25);overflow:hidden}
+.lapmenu{position:absolute;z-index:50;width:220px;background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.25);overflow:hidden}
 .lapmenu .mh{padding:10px 14px;border-bottom:1px solid var(--line)}
 .lapmenu .mh b{display:block;font-size:16px}
 .lapmenu .mh span{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
@@ -396,20 +396,14 @@ function openLapMenu(cell, n, k, where) {
   menuFor = { n, t, where };
   document.querySelectorAll('td.lap.sel').forEach(c => c.classList.remove('sel'));
   cell.classList.add('sel');
-  const a = athletes().find(x => x.n == n) || { name: '' };
   lapMenu.textContent = '';
-  const mh = document.createElement('div'); mh.className = 'mh';
-  const b = document.createElement('b'); b.textContent = '#' + n + ' ' + a.name + ' · Lap ' + (k + 1);
-  const s = document.createElement('span'); s.textContent = cell.textContent + ' · crossed ' + clockTime(t) + '.' + Math.floor((t % 1000) / 100);
-  mh.append(b, s);
   const item = (icon, label, fn) => {
     const btn = document.createElement('button');
-    const ic = document.createElement('span'); ic.className = 'ic'; ic.textContent = icon;
-    btn.append(ic, label); btn.onclick = e => { e.stopPropagation(); fn(); }; return btn;
+    btn.textContent = label; btn.onclick = e => { e.stopPropagation(); fn(); }; return btn;
   };
-  lapMenu.append(mh,
-    item('↩', 'Undo', () => removeLap(n, t, false)),
-    item('⇢', 'Move to Unassigned', () => removeLap(n, t, true)));
+  lapMenu.append(
+    item('', 'Undo', () => removeLap(n, t, false)),
+    item('', 'Move to Unassigned', () => removeLap(n, t, true)));
   lapMenu.hidden = false;
   // place under the time (or above if no room), kept on screen
   const r = cell.getBoundingClientRect(), w = lapMenu.offsetWidth, hgt = lapMenu.offsetHeight;
