@@ -32,6 +32,9 @@ button:disabled{opacity:.5;cursor:default}
 .pill{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;padding:5px 10px;border-radius:99px;background:var(--warn-bg);color:var(--warn)}
 .pill.ok{background:var(--ok-bg);color:var(--ok)}
 .status .grow{flex:1}
+.menu{position:relative}
+.menu-pop{position:absolute;right:0;top:calc(100% + 6px);z-index:30;min-width:220px;display:flex;flex-direction:column;gap:6px;padding:8px;background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+.menu-pop button{width:100%;text-align:left;min-height:48px}
 .start-btn{display:block;width:100%;min-height:96px;font-size:28px;font-weight:900;letter-spacing:1px;background:#0a7a3d;color:#fff;border:0;border-radius:16px;box-shadow:0 4px 0 #075a2c}
 .start-btn:active{transform:translateY(3px);box-shadow:0 1px 0 #075a2c}
 .clock{display:flex;align-items:center;gap:16px}
@@ -111,7 +114,14 @@ td.act .danger{min-width:40px;min-height:48px;margin-right:6px;padding:0 10px}
     <span class="pill" id="racePill">Race not downloaded</span>
     <span class="pill" id="newPill" hidden>Newer start list available</span>
     <span class="grow"></span>
-    <button id="dl">Download race</button>
+    <!-- Download / Reset live in a menu so Reset race isn't one stray tap away -->
+    <div class="menu">
+      <button id="menuBtn" aria-haspopup="true" aria-expanded="false">Race ▾</button>
+      <div class="menu-pop" id="menuPop" hidden>
+        <button id="dl">Download race</button>
+        <button class="danger" id="resetBtn">Reset race</button>
+      </div>
+    </div>
   </div>
 
   <!-- before the race -->
@@ -187,7 +197,6 @@ td.act .danger{min-width:40px;min-height:48px;margin-right:6px;padding:0 10px}
   <div class="reset" id="resetBox" hidden>
     <span class="muted" id="resetMsg"></span>
     <button class="endbtn" id="endBtn">End race</button>
-    <button class="danger" id="resetBtn">Reset race</button>
   </div>
 </main>
 <script>
@@ -265,7 +274,7 @@ async function download() {
       ? { n: r[0], name: r[2] || '', birth: r[3] || '', team: r[4] || '', gender: r[5] || '', off: toSec(r[1]) - base }
       : { brk: r[2] || 'Break', off: null });
     st.downloadedAt = Date.now(); st.sig = text; newer = false; save();
-    flash('Start list downloaded ✓');
+    openMenu(false); flash('Start list downloaded ✓');
   } catch (e) {
     flash(navigator.onLine ? 'Download failed: ' + (e.name === 'AbortError' ? 'timed out' : e.message) : 'No connection. Using the saved copy.');
   }
@@ -289,8 +298,14 @@ $('#resetBtn').onclick = () => {
     return;
   }
   clearTimeout(resetTimer); resetArmed = false; $('#resetBtn').textContent = 'Reset race';
-  st.raceStart = 0; st.laps = {}; st.ended = 0; st.unknown = []; save(); render();
+  st.raceStart = 0; st.laps = {}; st.ended = 0; st.unknown = []; save(); openMenu(false); render();
+  flash('Race reset.');
 };
+/* ---------- Race ▾ menu (Download race / Reset race) ---------- */
+function openMenu(on) { $('#menuPop').hidden = !on; $('#menuBtn').setAttribute('aria-expanded', on); }
+$('#menuBtn').onclick = e => { e.stopPropagation(); openMenu($('#menuPop').hidden); };
+$('#menuPop').onclick = e => e.stopPropagation(); // taps inside (e.g. the first of a two-tap confirm) keep it open
+document.addEventListener('click', () => openMenu(false));
 $('#startBtn').onclick = startRace;
 
 // End race: freeze times, rank, save on the phone, then try to upload
@@ -629,8 +644,8 @@ function render() {
   if (!downloading && !dlArmed) $('#dl').textContent = has ? 'Re-download race' : 'Download race';
   $('#pre').hidden = racing; $('#live').hidden = !live;
   $('#startBtn').disabled = !has;
-  $('#preMsg').textContent = has ? 'The first athlete starts 30 seconds after you press Start race.' : 'Download the race first. Do it while you have signal; after that no connection is needed.';
-  $('#resetBox').hidden = !racing && !$('#resetMsg').textContent;
+  $('#preMsg').textContent = has ? 'The first athlete starts 30 seconds after you press Start race.' : 'Download the race first (Race ▾ → Download race). Do it while you have signal; after that no connection is needed.';
+  $('#resetBox').hidden = !live && !$('#resetMsg').textContent;
   $('#resetBtn').hidden = !racing;
   $('#endBtn').hidden = !live;
   $('#orderCard').hidden = !!st.ended; // start order isn't needed once the race is over
