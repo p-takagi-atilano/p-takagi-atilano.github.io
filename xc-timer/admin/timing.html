@@ -78,6 +78,16 @@ tr:last-child td{border-bottom:0}
 .endbtn{background:#0d1420;color:#fff;border-color:#0d1420;font-weight:700;min-height:48px;padding:8px 20px}
 @media (prefers-color-scheme:dark){.endbtn{background:#e8edf5;color:#0d1420;border-color:#e8edf5}}
 td.rank{font-weight:800}
+td.lap.rec{cursor:pointer;text-decoration:underline dotted var(--muted);text-underline-offset:3px}
+td.lap.sel{background:var(--pri);color:#fff;border-radius:6px;text-decoration:none}
+.lapmenu{position:absolute;z-index:50;width:240px;background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.25);overflow:hidden}
+.lapmenu .mh{padding:10px 14px;border-bottom:1px solid var(--line)}
+.lapmenu .mh b{display:block;font-size:16px}
+.lapmenu .mh span{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.lapmenu button{display:flex;align-items:center;gap:10px;width:100%;min-height:50px;padding:0 14px;border:0;border-radius:0;background:transparent;color:var(--ink);font-size:17px;font-weight:600;text-align:left}
+.lapmenu button+button{border-top:1px solid var(--line)}
+.lapmenu button:active{background:var(--soft)}
+.lapmenu .ic{width:1.2em;text-align:center;color:var(--muted)}
 [hidden]{display:none!important}
 </style>
 </head>
@@ -371,6 +381,56 @@ function renderUnknown() {
   }
 }
 
+// tap a recorded lap time -> menu: Undo (remove it) / Move to Unassigned (keep the time for someone else)
+let menuFor = null; // {n, t, where}
+const lapMenu = document.createElement('div'); lapMenu.className = 'lapmenu'; lapMenu.hidden = true; document.body.append(lapMenu);
+function closeLapMenu() {
+  if (!menuFor) return;
+  menuFor = null; lapMenu.hidden = true;
+  document.querySelectorAll('td.lap.sel').forEach(c => c.classList.remove('sel'));
+}
+function openLapMenu(cell, n, k, where) {
+  const t = (st.laps[n] || [])[k]; if (t == null) return;
+  if (menuFor && menuFor.n == n && menuFor.t === t) { closeLapMenu(); return; }
+  closeLapMenu();
+  menuFor = { n, t, where };
+  document.querySelectorAll('td.lap.sel').forEach(c => c.classList.remove('sel'));
+  cell.classList.add('sel');
+  const a = athletes().find(x => x.n == n) || { name: '' };
+  lapMenu.textContent = '';
+  const mh = document.createElement('div'); mh.className = 'mh';
+  const b = document.createElement('b'); b.textContent = '#' + n + ' ' + a.name + ' · Lap ' + (k + 1);
+  const s = document.createElement('span'); s.textContent = cell.textContent + ' · crossed ' + clockTime(t) + '.' + Math.floor((t % 1000) / 100);
+  mh.append(b, s);
+  const item = (icon, label, fn) => {
+    const btn = document.createElement('button');
+    const ic = document.createElement('span'); ic.className = 'ic'; ic.textContent = icon;
+    btn.append(ic, label); btn.onclick = e => { e.stopPropagation(); fn(); }; return btn;
+  };
+  lapMenu.append(mh,
+    item('↩', 'Undo', () => removeLap(n, t, false)),
+    item('⇢', 'Move to Unassigned', () => removeLap(n, t, true)));
+  lapMenu.hidden = false;
+  // place under the time (or above if no room), kept on screen
+  const r = cell.getBoundingClientRect(), w = lapMenu.offsetWidth, hgt = lapMenu.offsetHeight;
+  const left = Math.max(8, Math.min(r.left + r.width / 2 - w / 2, innerWidth - w - 8));
+  const below = r.bottom + 6 + hgt <= innerHeight || r.top - 6 - hgt < 0;
+  lapMenu.style.left = (left + scrollX) + 'px';
+  lapMenu.style.top = ((below ? r.bottom + 6 : r.top - 6 - hgt) + scrollY) + 'px';
+}
+function removeLap(n, t, toUnassigned) {
+  const laps = st.laps[n] || [], i = laps.indexOf(t);
+  closeLapMenu();
+  if (i < 0) return;
+  laps.splice(i, 1);
+  if (toUnassigned) { st.unknown.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), t }); st.unknown.sort((x, y) => x.t - y.t); }
+  if (st.ended && st.results) { st.results.rows = computeResults(); st.results.uploadedAt = 0; }
+  save(); render(); tick();
+  if (st.ended) upload();
+}
+document.addEventListener('click', e => { if (menuFor && !lapMenu.contains(e.target)) closeLapMenu(); });
+addEventListener('resize', closeLapMenu);
+
 function lapPress(a) {
   if (!st.raceStart || st.ended) return;
   const now = Date.now(), start = firstStart() + a.off * 1000;
@@ -415,7 +475,14 @@ function renderResults(live) {
   for (const row of r.rows) {
     const tr = document.createElement('tr');
     const L = row.length; // results saved before birth year/gender were added have 7 columns
-    tr.append(td(row[0], 'n rank'), td(row[1], 'n'), td(row[2]), td(row[3], 'team'), td(row[L - 3], 'n lap'), td(row[L - 2], 'n lap'), td(row[L - 1], 'n lap'));
+    const c1 = td(row[L - 3], 'n lap'), c2 = td(row[L - 2], 'n lap'), laps = st.laps[row[1]] || [];
+    [c1, c2].forEach((c, k) => {
+      if (laps[k] == null) return;
+      c.classList.add('rec');
+      if (menuFor && menuFor.where === 'results' && menuFor.n == row[1] && menuFor.t === laps[k]) c.classList.add('sel');
+      c.onclick = e => { e.stopPropagation(); openLapMenu(c, row[1], k, 'results'); };
+    });
+    tr.append(td(row[0], 'n rank'), td(row[1], 'n'), td(row[2]), td(row[3], 'team'), c1, c2, td(row[L - 1], 'n lap'));
     tb.append(tr);
   }
 }
@@ -449,7 +516,9 @@ function render() {
       btn.disabled = true; // enabled by tick() once the race is running and this athlete has started
       btn.onclick = () => lapPress(x);
       const act = td(''); act.className = 'act'; act.append(btn);
-      tr.append(td(x.n, 'n'), td('+' + dur(x.off * 1000), 't'), td(x.name), td(x.team || '', 'team'), td('', 'n lap'), td('', 'n lap'), act);
+      const c1 = td('', 'n lap'), c2 = td('', 'n lap');
+      [c1, c2].forEach((c, k) => c.onclick = e => { if (!c.classList.contains('rec')) return; e.stopPropagation(); openLapMenu(c, x.n, k, 'order'); });
+      tr.append(td(x.n, 'n'), td('+' + dur(x.off * 1000), 't'), td(x.name), td(x.team || '', 'team'), c1, c2, act);
     }
     tb.append(tr);
   }
@@ -498,6 +567,8 @@ function tick() {
     const cells = tr.querySelectorAll('td.lap'), btn = tr.querySelector('.lapbtn');
     for (let k = 0; k < LAPS; k++) {
       const from = k ? laps[k - 1] : start, c = cells[k];
+      c.classList.toggle('rec', k < laps.length);
+      c.classList.toggle('sel', !!menuFor && menuFor.n == tr.dataset.n && menuFor.t === laps[k] && menuFor.where === 'order');
       if (k < laps.length) { c.textContent = lapTime(laps[k] - from); c.classList.remove('running'); }
       else if (k === laps.length && now >= start && !st.ended) { c.textContent = dur(now - from); c.classList.add('running'); }
       else { c.textContent = ''; c.classList.remove('running'); }
