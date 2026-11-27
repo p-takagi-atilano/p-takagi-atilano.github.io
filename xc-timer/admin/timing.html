@@ -476,15 +476,22 @@ function removeLap(n, t, toUnassigned) {
   if (st.ended) upload();
 }
 document.addEventListener('click', e => { if (menuFor && !lapMenu.contains(e.target)) closeLapMenu(); });
-// tap a racer's name: Mark DNS (not undoable on purpose; re-add them with + Add skier if it was a mistake)
+// tap a racer's name: Mark DNS, or Undo DNS until their start time (after that, re-add them with + Add skier)
 const canDns = x => !x.dns && !st.ended && !(st.laps[x.n] || []).length;
+const canUndoDns = x => !!x.dns && !st.ended && (!st.raceStart || firstStart() + x.off * 1000 > Date.now());
+const nameTap = x => canDns(x) || canUndoDns(x);
 function openNameMenu(cell, x) {
   if (menuFor && menuFor.where === 'name' && menuFor.n == x.n) { closeLapMenu(); return; }
   closeLapMenu();
   menuFor = { n: x.n, t: null, where: 'name' };
   lapMenu.textContent = '';
-  const b = document.createElement('button'); b.textContent = 'Mark DNS';
-  b.onclick = e => { e.stopPropagation(); closeLapMenu(); if (!canDns(x)) return; x.dns = true; save(); render(); tick(); };
+  const undo = !!x.dns, b = document.createElement('button'); b.textContent = undo ? 'Undo DNS' : 'Mark DNS';
+  b.onclick = e => {
+    e.stopPropagation(); closeLapMenu();
+    if (undo ? !canUndoDns(x) : !canDns(x)) return; // too late (e.g. their start just passed)
+    if (undo) delete x.dns; else x.dns = true;
+    save(); render(); tick();
+  };
   lapMenu.append(b); lapMenu.hidden = false;
   const r = cell.getBoundingClientRect(), w = lapMenu.offsetWidth, hgt = lapMenu.offsetHeight;
   const left = Math.max(8, Math.min(r.left, innerWidth - w - 8));
@@ -696,7 +703,8 @@ function render() {
       const grip = td(movable(x) ? '⠿' : '', 'grip'); grip.title = 'Drag to change start order';
       grip.addEventListener('pointerdown', e => { if (movable(x)) startDrag(e, tr); });
       const nm = td(x.name, 'nm');
-      if (canDns(x)) { nm.classList.add('tap'); nm.onclick = e => { e.stopPropagation(); if (canDns(x)) openNameMenu(nm, x); }; }
+      nm.onclick = e => { e.stopPropagation(); if (nameTap(x)) openNameMenu(nm, x); };
+      if (nameTap(x)) nm.classList.add('tap');
       if (x.dns) tr.classList.add('dns');
       tr.append(grip, td(x.n, 'n'), td('+' + dur(x.off * 1000), 't'), nm, td(x.team || '', 'team'), c1, c2, act);
     }
@@ -756,7 +764,7 @@ function tick() {
     const fin = laps.length >= LAPS;
     btn.disabled = now < start || fin || !!st.ended || dns;
     btn.textContent = dns ? 'DNS' : fin ? '✓' : 'Lap';
-    tr.querySelector('td.nm')?.classList.toggle('tap', !dns && !st.ended && !laps.length);
+    tr.querySelector('td.nm')?.classList.toggle('tap', dns ? !st.ended && now < start : !st.ended && !laps.length);
     tr.querySelector('td.act .danger')?.toggleAttribute('hidden', laps.length > 0 || !!st.ended); // remove only while no times
     const g = tr.querySelector('td.grip'); if (g && g.textContent && !movable(athletes().find(a => a.n == tr.dataset.n))) g.textContent = '';
     tr.classList.toggle('fin', fin);
