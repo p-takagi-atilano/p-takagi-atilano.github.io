@@ -89,7 +89,7 @@ body.drag{cursor:grabbing;user-select:none}
 <script>
 "use strict";
 const SHEET = '1PqselA1x1xcKgkLQq2a1JQm8nFdDSZ_i21E_3XVotaA';
-const URL_CSV = `https://docs.google.com/spreadsheets/d/${SHEET}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent('Form Responses 1')}`;
+const URL_CSV = `https://docs.google.com/spreadsheets/d/${SHEET}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent('Registrations')}`;
 const LS = 'xc.admin.v2';
 const $ = s => document.querySelector(s);
 const uid = () => Math.random().toString(36).slice(2, 9);
@@ -125,10 +125,6 @@ function parseCSV(t) {
   }
   if (f || row.length) { row.push(f); rows.push(row); }
   return rows.filter(r => r.some(x => x.trim()));
-}
-function parseStamp(s) { // "11/26/2026 21:28:56"
-  const m = String(s).match(/(\d+)\/(\d+)\/(\d+)\s+(\d+):(\d+):?(\d+)?/);
-  return m ? new Date(+m[3], m[1] - 1, +m[2], +m[4], +m[5], +(m[6] || 0)).getTime() : 0;
 }
 
 // keep saved order, drop racers who are gone, add new registrations at the end
@@ -307,13 +303,13 @@ async function load() {
     if (/^\s*</.test(text)) throw new Error('sheet not shared');
     const rows = parseCSV(text);
     const h = (rows.shift() || []).map(x => x.trim().toLowerCase());
-    const iT = h.findIndex(x => x.includes('timestamp')), iN = h.indexOf('name'), iBs = h.map((x, i) => x.includes('birth') ? i : -1).filter(i => i >= 0), iTm = h.indexOf('team');
-    const m = new Map(); // a later submission with the same name replaces the earlier one
-    for (const r of rows) {
-      const name = (r[iN] || '').trim(); if (!name) continue;
+    const iN = h.indexOf('name'), iBs = h.map((x, i) => x.includes('birth') ? i : -1).filter(i => i >= 0), iTm = h.indexOf('team');
+    const m = new Map(); // a later row with the same name replaces the earlier one
+    rows.forEach((r, idx) => {
+      const name = (r[iN] || '').trim(); if (!name) return;
       const by = iBs.map(i => String(r[i] || '')).join(' ').match(/\d{4}/);
-      m.set(name.toLowerCase(), { id: name.toLowerCase(), name, birth: by ? +by[0] : '', team: iTm >= 0 ? (r[iTm] || '').trim() : '', reg: parseStamp(r[iT]), regText: (r[iT] || '').trim() });
-    }
+      m.set(name.toLowerCase(), { id: name.toLowerCase(), name, birth: by ? +by[0] : '', team: iTm >= 0 ? (r[iTm] || '').trim() : '', reg: idx }); // reg = row order in the Sheet
+    });
     racers = m; loaded = true; reconcile(); save();
     $('#upd').textContent = 'loaded ' + new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   } catch (e) {

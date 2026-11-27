@@ -29,6 +29,15 @@ th{font-size:12px;text-transform:uppercase;letter-spacing:.3px;color:var(--muted
 td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
 tr:last-child td{border-bottom:0}
 .num{display:inline-block;min-width:1.8em;color:var(--muted)}
+button.reg{width:100%;border:0;cursor:pointer;font-family:inherit}
+#regForm{margin-top:16px;display:grid;gap:10px}
+#regForm label{display:grid;gap:4px;font-size:13px;font-weight:600;color:var(--muted)}
+#regForm input{font:inherit;font-size:16px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
+#regForm .btns{display:flex;gap:10px}
+#regForm .btns button{flex:1;font:inherit;font-weight:700;padding:12px;border-radius:10px;border:1px solid var(--line);background:var(--soft);color:var(--ink);cursor:pointer}
+#regForm .btns button[type=submit]{background:#d62828;border-color:#d62828;color:#fff}
+#regMsg{margin:10px 0 0;text-align:center;font-weight:600}
+#regMsg.err{color:#d62828}
 </style>
 </head>
 <body>
@@ -44,12 +53,21 @@ tr:last-child td{border-bottom:0}
       <tbody id="rows"><tr><td colspan="3" class="muted">Loading…</td></tr></tbody>
     </table>
   </div>
-  <a class="reg" href="https://docs.google.com/forms/d/e/1FAIpQLSdtr5MrfNsVe-3TSQ61Qxk4jsclQG5V2u6C5aetgGZZ_U9YAg/viewform" target="_blank" rel="noopener">Register</a>
+  <button class="reg" id="regBtn">Register</button>
+  <form class="card" id="regForm" hidden autocomplete="off">
+    <h2>Register</h2>
+    <label>Name<input id="rName" required maxlength="80" placeholder="First and last name"></label>
+    <label>Birth year<input id="rBirth" required inputmode="numeric" pattern="(19|20)[0-9]{2}" maxlength="4" placeholder="e.g. 2012"></label>
+    <label>Team<input id="rTeam" maxlength="80" placeholder="Optional"></label>
+    <div class="btns"><button type="button" id="rCancel">Cancel</button><button type="submit" id="rSubmit">Register</button></div>
+  </form>
+  <p class="muted" id="regMsg" hidden></p>
 </main>
 <script>
 "use strict";
 const SHEET = '1PqselA1x1xcKgkLQq2a1JQm8nFdDSZ_i21E_3XVotaA';
-const URL_CSV = `https://docs.google.com/spreadsheets/d/${SHEET}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent('Form Responses 1')}`;
+const URL_CSV = `https://docs.google.com/spreadsheets/d/${SHEET}/gviz/tq?tqx=out:csv&headers=1&sheet=${encodeURIComponent('Registrations')}`;
+const WEB_APP = 'https://script.google.com/macros/s/AKfycbz0TD1XClbOVJHJrqoy9Ee8OCRmnVakOLIb4sq3ddvQK-bLrRpPon-XgV5WuZCR7yg1aQ/exec';
 const $ = s => document.querySelector(s);
 
 function parseCSV(t) {
@@ -97,6 +115,28 @@ async function load() {
   }
 }
 load(); setInterval(load, 30000);
+
+// Register: adds a row to the Sheet's "Registrations" tab through the Apps Script web app
+const msg = (text, err) => { const m = $('#regMsg'); m.hidden = !text; m.textContent = text || ''; m.className = 'muted' + (err ? ' err' : ''); };
+$('#regBtn').onclick = () => { $('#regForm').hidden = false; $('#regBtn').hidden = true; msg(''); $('#rName').focus(); };
+$('#rCancel').onclick = () => { $('#regForm').hidden = true; $('#regBtn').hidden = false; };
+$('#regForm').onsubmit = async e => {
+  e.preventDefault();
+  const name = $('#rName').value.trim(), birth = $('#rBirth').value.trim(), team = $('#rTeam').value.trim();
+  if (!name || !/^(19|20)\d{2}$/.test(birth)) { msg('Please enter your name and a 4-digit birth year.', true); return; }
+  $('#rSubmit').disabled = true; $('#rSubmit').textContent = 'Registering…'; msg('');
+  try {
+    const res = await fetch(WEB_APP, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ type: 'register', name, birth, team }) });
+    const out = await res.json();
+    if (!out.ok) throw new Error(out.error || 'not saved');
+    $('#regForm').reset(); $('#regForm').hidden = true; $('#regBtn').hidden = false;
+    msg(`${name} is registered ✓`);
+    load();
+  } catch (err) {
+    msg('Couldn’t register right now. Check your signal and try again.', true);
+  }
+  $('#rSubmit').disabled = false; $('#rSubmit').textContent = 'Register';
+};
 </script>
 </body>
 </html>
