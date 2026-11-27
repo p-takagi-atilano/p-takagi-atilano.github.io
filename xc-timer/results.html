@@ -43,9 +43,6 @@ td.t{font-variant-numeric:tabular-nums;font-weight:600}
 td.start{font-variant-numeric:tabular-nums;font-weight:600}
 tr.brk td{background:#fff4dc;color:#8a5a00;font-weight:600;text-align:center}
 @media (prefers-color-scheme:dark){tr.brk td{background:#2e2614;color:#f0c46a}}
-.filters{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px}
-.filters label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.3px}
-.filters select{font:inherit;font-size:15px;text-transform:none;letter-spacing:0;font-weight:400;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 8px;min-height:40px;min-width:110px}
 .sbtn{font:inherit;font-size:14px;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 12px;min-height:40px;cursor:pointer}
 .sortbar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:8px;font-size:14px}
 .chip{display:inline-flex;align-items:center;gap:4px;background:var(--soft);color:var(--pri);border-radius:99px;padding:3px 6px 3px 10px;font-weight:600}
@@ -56,6 +53,23 @@ th.act{color:var(--pri)}
 td .pl{color:var(--muted);font-weight:500;font-size:13px}
 td.dnf{color:var(--muted);font-weight:600}
 th,td{white-space:nowrap}
+main{max-width:920px}
+.fgroup{display:flex;flex-direction:column;gap:5px;margin-bottom:10px}
+.flabel{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.3px}
+.pills{display:flex;flex-wrap:wrap;gap:6px}
+.pill{font:inherit;font-size:14px;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:99px;padding:6px 12px;min-height:36px;cursor:pointer}
+.pill.on{background:var(--pri);border-color:var(--pri);color:#fff}
+@media (prefers-color-scheme:dark){.pill.on{color:#0e131b}}
+#q{font:inherit;font-size:16px;width:100%;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-height:42px}
+.sub{display:none;color:var(--muted);font-size:12.5px;font-weight:400;margin-top:2px;white-space:normal}
+/* phones: Rank | Skier (bib · team · born underneath) | Time (laps underneath) so nothing scrolls sideways */
+@media (max-width:700px){
+  .w{display:none}
+  .sub{display:block}
+  td.nm{white-space:normal;width:100%}
+  .sub.lp{white-space:nowrap;margin-top:1px}
+  .wrap{overflow-x:visible}
+}
 </style>
 </head>
 <body>
@@ -70,11 +84,10 @@ th,td{white-space:nowrap}
     <p class="muted">Results will be posted here after the race.</p>
   </div>
   <div class="card" id="list" hidden>
-    <div class="filters">
-      <label>Team<select id="fTeam"></select></label>
-      <label>Birth year<select id="fBirth"></select></label>
-      <button class="sbtn" id="clearF" hidden>Clear filters</button>
-    </div>
+    <div class="fgroup"><input id="q" type="search" placeholder="Search by name" autocomplete="off" enterkeyhint="search"></div>
+    <div class="fgroup"><span class="flabel">Team</span><div class="pills" id="fTeam"></div></div>
+    <div class="fgroup"><span class="flabel">Birth year</span><div class="pills" id="fBirth"></div></div>
+    <div class="fgroup"><div><button class="sbtn" id="clearF" hidden>Clear filters</button></div></div>
     <div class="sortbar" id="sortbar"></div>
     <div class="wrap">
       <table>
@@ -109,7 +122,8 @@ function toMs(s) {
 }
 
 let athletes = []; // {bib, name, team, birth, l1, l2, total, l1s, l2s, totals}
-const filters = { team: '', birth: '' };
+const filters = { team: new Set(), birth: new Set() }; // empty set = everyone
+let query = '';
 let sort = []; // [{key, dir}] chain; empty = by rank
 const SORTABLE = { team: { label: 'Team', type: 'text' }, birth: { label: 'Birth year', type: 'num' } };
 
@@ -134,20 +148,21 @@ async function load() {
 }
 
 function fillFilters() {
-  const opts = (key, sel, numeric) => {
+  const pills = (key, box, numeric) => {
     const vals = [...new Set(athletes.map(a => a[key]).filter(Boolean))].sort((x, y) => numeric ? x - y : x.localeCompare(y));
-    if (filters[key] && !vals.includes(filters[key])) filters[key] = '';
-    sel.textContent = '';
-    const all = document.createElement('option'); all.value = ''; all.textContent = 'All'; sel.append(all);
-    for (const v of vals) { const o = document.createElement('option'); o.value = v; o.textContent = v; sel.append(o); }
-    sel.value = filters[key];
-    sel.disabled = vals.length === 0;
+    for (const v of [...filters[key]]) if (!vals.includes(v)) filters[key].delete(v);
+    box.textContent = '';
+    for (const v of vals) {
+      const b = el('button', { className: 'pill' + (filters[key].has(v) ? ' on' : ''), textContent: v });
+      b.setAttribute('aria-pressed', filters[key].has(v));
+      b.onclick = () => { filters[key].has(v) ? filters[key].delete(v) : filters[key].add(v); fillFilters(); render(); };
+      box.append(b);
+    }
   };
-  opts('team', $('#fTeam')); opts('birth', $('#fBirth'), true);
+  pills('team', $('#fTeam')); pills('birth', $('#fBirth'), true);
 }
-$('#fTeam').onchange = e => { filters.team = e.target.value; render(); };
-$('#fBirth').onchange = e => { filters.birth = e.target.value; render(); };
-$('#clearF').onclick = () => { filters.team = filters.birth = ''; fillFilters(); render(); };
+$('#q').oninput = e => { query = e.target.value; render(); };
+$('#clearF').onclick = () => { filters.team.clear(); filters.birth.clear(); query = ''; $('#q').value = ''; fillFilters(); render(); };
 
 // place of each value among the shown athletes (ties share a place); null for no time
 function places(list, key) {
@@ -168,16 +183,21 @@ function cmpKey(a, b, key, dir) {
 function el(tag, props = {}, ...kids) { const e = document.createElement(tag); Object.assign(e, props); e.append(...kids); return e; }
 
 function render() {
-  const shown = athletes.filter(a => (!filters.team || a.team === filters.team) && (!filters.birth || a.birth === filters.birth));
-  $('#clearF').hidden = !(filters.team || filters.birth);
-  const rank = places(shown, 'total'), p1 = places(shown, 'l1'), p2 = places(shown, 'l2');
+  const inSet = (set, v) => !set.size || set.has(v);
+  const field = athletes.filter(a => inSet(filters.team, a.team) && inSet(filters.birth, a.birth));
+  // places are among the team/birth-year selection; the name search only hides rows
+  const rank = places(field, 'total'), p1 = places(field, 'l1'), p2 = places(field, 'l2');
+  const norm = t => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const q = norm(query.trim());
+  const shown = q ? field.filter(a => norm(a.name).includes(q)) : field;
+  $('#clearF').hidden = !(filters.team.size || filters.birth.size || q);
   const byRank = (a, b) => (a.total == null) - (b.total == null) || (a.total ?? 0) - (b.total ?? 0) || (+a.bib || 0) - (+b.bib || 0);
   shown.sort((a, b) => { for (const s of sort) { const c = cmpKey(a, b, s.key, s.dir); if (c) return c; } return byRank(a, b); });
 
   // sort chips
   const bar = $('#sortbar'); bar.textContent = '';
   bar.append(el('span', { className: 'muted', textContent: 'Sort:' }));
-  if (!sort.length) bar.append(el('span', { className: 'muted', textContent: 'rank (tap Team or Birth year to sort)' }));
+  if (!sort.length) bar.append(el('span', { className: 'muted', textContent: 'rank' }));
   sort.forEach((s, i) => {
     if (i) bar.append(el('span', { className: 'muted', textContent: 'then' }));
     const c = SORTABLE[s.key];
@@ -186,11 +206,14 @@ function render() {
     const x = el('button', { textContent: '×', title: 'Remove' }); x.onclick = () => { sort.splice(i, 1); render(); };
     bar.append(el('span', { className: 'chip' }, flip, x));
   });
+  for (const k of Object.keys(SORTABLE)) if (!sort.some(s => s.key === k)) {
+    const add = el('button', { className: 'sbtn', textContent: '+ ' + SORTABLE[k].label }); add.onclick = () => clickSort(k); bar.append(add);
+  }
   if (sort.length) { const clr = el('button', { className: 'sbtn', textContent: 'Clear sort' }); clr.onclick = () => { sort = []; render(); }; bar.append(clr); }
 
   // header
   const head = $('#head'); head.textContent = '';
-  const cols = [['Rank', 'n'], ['#', 'n'], ['Name', ''], ['team'], ['birth', 'n'], ['Lap 1', 'n'], ['Lap 2', 'n'], ['Total', 'n']];
+  const cols = [['Rank', 'n'], ['#', 'n w'], ['Name', ''], ['team', 'w'], ['birth', 'n w'], ['Lap 1', 'n w'], ['Lap 2', 'n w'], ['Total', 'n']];
   for (const [k, cls = ''] of cols) {
     if (SORTABLE[k]) {
       const i = sort.findIndex(s => s.key === k);
@@ -202,16 +225,20 @@ function render() {
   const tb = $('#rows'); tb.textContent = '';
   const timeCell = (str, place) => { const c = el('td', { className: 'n t' }, str); if (place) c.append(' ', el('span', { className: 'pl', textContent: '(' + place + ')' })); return c; };
   for (const a of shown) {
+    const lap = (s, p) => s ? s + (p ? ' (' + p + ')' : '') : '–';
+    const who = ['#' + a.bib, a.team, a.birth].filter(x => x && x !== '#').join(' · ');
+    const tot = el('td', { className: a.total != null ? 'n t' : 'n dnf', textContent: a.totals });
+    tot.append(el('div', { className: 'sub lp', textContent: 'L1 ' + lap(a.l1s, p1.get(a)) }), el('div', { className: 'sub lp', textContent: 'L2 ' + lap(a.l2s, p2.get(a)) }));
+    const l1 = timeCell(a.l1s, p1.get(a)), l2 = timeCell(a.l2s, p2.get(a)); l1.classList.add('w'); l2.classList.add('w');
     tb.append(el('tr', {},
       el('td', { className: 'n rank', textContent: rank.get(a) || '' }),
-      el('td', { className: 'n', textContent: a.bib }),
-      el('td', { textContent: a.name }),
-      el('td', { textContent: a.team }),
-      el('td', { className: 'n', textContent: a.birth }),
-      timeCell(a.l1s, p1.get(a)), timeCell(a.l2s, p2.get(a)),
-      a.total != null ? el('td', { className: 'n t', textContent: a.totals }) : el('td', { className: 'n dnf', textContent: a.totals })));
+      el('td', { className: 'n w', textContent: a.bib }),
+      el('td', { className: 'nm' }, a.name, el('div', { className: 'sub', textContent: who })),
+      el('td', { className: 'w', textContent: a.team }),
+      el('td', { className: 'n w', textContent: a.birth }),
+      l1, l2, tot));
   }
-  if (!shown.length) tb.append(el('tr', {}, el('td', { colSpan: 8, className: 'muted', textContent: 'Nobody matches these filters.' })));
+  if (!shown.length) tb.append(el('tr', {}, el('td', { colSpan: 8, className: 'muted', textContent: 'Nobody matches.' })));
 }
 load(); setInterval(load, 60000);
 </script>
