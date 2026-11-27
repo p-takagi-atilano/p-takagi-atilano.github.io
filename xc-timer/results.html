@@ -87,6 +87,7 @@ main{max-width:920px}
     <div class="fgroup"><input id="q" type="search" placeholder="Search by name" autocomplete="off" enterkeyhint="search"></div>
     <div class="fgroup"><span class="flabel">Team</span><div class="pills" id="fTeam"></div></div>
     <div class="fgroup"><span class="flabel">Birth year</span><div class="pills" id="fBirth"></div></div>
+    <div class="fgroup"><span class="flabel">Gender</span><div class="pills" id="fGender"></div></div>
     <div class="fgroup"><div><button class="sbtn" id="clearF" hidden>Clear filters</button></div></div>
     <div class="sortbar" id="sortbar"></div>
     <div class="wrap">
@@ -121,11 +122,11 @@ function toMs(s) {
   return m ? ((+(m[1] || 0) * 60 + +m[2]) * 60 + +m[3]) * 1000 : null;
 }
 
-let athletes = []; // {bib, name, team, birth, l1, l2, total, l1s, l2s, totals}
-const filters = { team: new Set(), birth: new Set() }; // empty set = everyone
+let athletes = []; // {bib, name, team, birth, gender, l1, l2, total, l1s, l2s, totals}
+const filters = { team: new Set(), birth: new Set(), gender: new Set() }; // empty set = everyone
 let query = '';
 let sort = []; // [{key, dir}] chain; empty = by rank
-const SORTABLE = { team: { label: 'Team', type: 'text' }, birth: { label: 'Birth year', type: 'num' } };
+const SORTABLE = { team: { label: 'Team', type: 'text' }, birth: { label: 'Birth year', type: 'num' }, gender: { label: 'Gender', type: 'text' } };
 
 async function load() {
   let rows = [], head = [];
@@ -137,7 +138,7 @@ async function load() {
   const col = name => head.indexOf(name);
   const get = (r, name) => { const i = col(name); return i >= 0 ? (r[i] || '').trim() : ''; };
   athletes = rows.map(r => ({
-    bib: get(r, '#'), name: get(r, 'Name'), team: get(r, 'Team'), birth: get(r, 'Birth year'),
+    bib: get(r, '#'), name: get(r, 'Name'), team: get(r, 'Team'), birth: get(r, 'Birth year'), gender: get(r, 'Gender'),
     l1s: get(r, 'Lap 1'), l2s: get(r, 'Lap 2'), totals: get(r, 'Total'),
     l1: toMs(get(r, 'Lap 1')), l2: toMs(get(r, 'Lap 2')), total: toMs(get(r, 'Total')),
   }));
@@ -159,10 +160,10 @@ function fillFilters() {
       box.append(b);
     }
   };
-  pills('team', $('#fTeam')); pills('birth', $('#fBirth'), true);
+  pills('team', $('#fTeam')); pills('birth', $('#fBirth'), true); pills('gender', $('#fGender'));
 }
 $('#q').oninput = e => { query = e.target.value; render(); };
-$('#clearF').onclick = () => { filters.team.clear(); filters.birth.clear(); query = ''; $('#q').value = ''; fillFilters(); render(); };
+$('#clearF').onclick = () => { filters.team.clear(); filters.birth.clear(); filters.gender.clear(); query = ''; $('#q').value = ''; fillFilters(); render(); };
 
 // place of each value among the shown athletes (ties share a place); null for no time
 function places(list, key) {
@@ -184,13 +185,13 @@ function el(tag, props = {}, ...kids) { const e = document.createElement(tag); O
 
 function render() {
   const inSet = (set, v) => !set.size || set.has(v);
-  const field = athletes.filter(a => inSet(filters.team, a.team) && inSet(filters.birth, a.birth));
-  // places are among the team/birth-year selection; the name search only hides rows
+  const field = athletes.filter(a => inSet(filters.team, a.team) && inSet(filters.birth, a.birth) && inSet(filters.gender, a.gender));
+  // places are among the team/birth-year/gender selection; the name search only hides rows
   const rank = places(field, 'total'), p1 = places(field, 'l1'), p2 = places(field, 'l2');
   const norm = t => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   const q = norm(query.trim());
   const shown = q ? field.filter(a => norm(a.name).includes(q)) : field;
-  $('#clearF').hidden = !(filters.team.size || filters.birth.size || q);
+  $('#clearF').hidden = !(filters.team.size || filters.birth.size || filters.gender.size || q);
   const byRank = (a, b) => (a.total == null) - (b.total == null) || (a.total ?? 0) - (b.total ?? 0) || (+a.bib || 0) - (+b.bib || 0);
   shown.sort((a, b) => { for (const s of sort) { const c = cmpKey(a, b, s.key, s.dir); if (c) return c; } return byRank(a, b); });
 
@@ -213,7 +214,7 @@ function render() {
 
   // header
   const head = $('#head'); head.textContent = '';
-  const cols = [['Rank', 'n'], ['#', 'n w'], ['Name', ''], ['team', 'w'], ['birth', 'n w'], ['Lap 1', 'n w'], ['Lap 2', 'n w'], ['Total', 'n']];
+  const cols = [['Rank', 'n'], ['#', 'n w'], ['Name', ''], ['team', 'w'], ['birth', 'n w'], ['gender', 'w'], ['Lap 1', 'n w'], ['Lap 2', 'n w'], ['Total', 'n']];
   for (const [k, cls = ''] of cols) {
     if (SORTABLE[k]) {
       const i = sort.findIndex(s => s.key === k);
@@ -226,7 +227,7 @@ function render() {
   const timeCell = (str, place) => { const c = el('td', { className: 'n t' }, str); if (place) c.append(' ', el('span', { className: 'pl', textContent: '(' + place + ')' })); return c; };
   for (const a of shown) {
     const lap = (s, p) => s ? s + (p ? ' (' + p + ')' : '') : '–';
-    const who = ['#' + a.bib, a.team, a.birth].filter(x => x && x !== '#').join(' · ');
+    const who = ['#' + a.bib, a.team, a.birth, a.gender].filter(x => x && x !== '#').join(' · ');
     const tot = el('td', { className: a.total != null ? 'n t' : 'n dnf', textContent: a.totals });
     tot.append(el('div', { className: 'sub lp', textContent: 'L1 ' + lap(a.l1s, p1.get(a)) }), el('div', { className: 'sub lp', textContent: 'L2 ' + lap(a.l2s, p2.get(a)) }));
     const l1 = timeCell(a.l1s, p1.get(a)), l2 = timeCell(a.l2s, p2.get(a)); l1.classList.add('w'); l2.classList.add('w');
@@ -236,9 +237,10 @@ function render() {
       el('td', { className: 'nm' }, a.name, el('div', { className: 'sub', textContent: who })),
       el('td', { className: 'w', textContent: a.team }),
       el('td', { className: 'n w', textContent: a.birth }),
+      el('td', { className: 'w', textContent: a.gender }),
       l1, l2, tot));
   }
-  if (!shown.length) tb.append(el('tr', {}, el('td', { colSpan: 8, className: 'muted', textContent: 'Nobody matches.' })));
+  if (!shown.length) tb.append(el('tr', {}, el('td', { colSpan: 9, className: 'muted', textContent: 'Nobody matches.' })));
 }
 load(); setInterval(load, 60000);
 </script>

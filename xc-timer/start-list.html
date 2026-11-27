@@ -57,7 +57,7 @@ tr.brk td{background:#fff4dc;color:#8a5a00;font-weight:600;text-align:center}
   <div class="card" id="list" hidden>
     <div class="bar"><button id="pdfBtn">Download PDF</button></div>
     <table>
-      <thead><tr><th class="n">#</th><th>Start</th><th>Name</th><th class="n">Born</th><th>Team</th></tr></thead>
+      <thead><tr><th class="n">#</th><th>Start</th><th>Name</th><th class="n">Born</th><th>Team</th><th>Gender</th></tr></thead>
       <tbody id="rows"></tbody>
     </table>
   </div>
@@ -98,13 +98,13 @@ document.getElementById('pdfBtn').onclick = async () => {
     doc.setFont('helvetica', 'bold'); doc.setFontSize(16);
     doc.text('2026 Riley Swanson Birthday Time Trial · Start List', 40, 48);
     const body = lastRows.map(r => r[0]
-      ? [r[0], r[2], r[4] || '', r[1]]
-      : [{ content: r[2] || 'Break', colSpan: 4, styles: { halign: 'center', fontStyle: 'bold', fillColor: [255, 244, 220], textColor: [138, 90, 0] } }]);
+      ? [r[0], r[2], r[4] || '', r[5] || '', r[1]]
+      : [{ content: r[2] || 'Break', colSpan: 5, styles: { halign: 'center', fontStyle: 'bold', fillColor: [255, 244, 220], textColor: [138, 90, 0] } }]);
     doc.autoTable({
-      startY: 64, head: [['#', 'Name', 'Team', 'Start']], body,
+      startY: 64, head: [['#', 'Name', 'Team', 'Gender', 'Start']], body,
       theme: 'grid', styles: { fontSize: 12, cellPadding: 6, valign: 'middle' },
       headStyles: { fillColor: [11, 61, 145], textColor: 255 },
-      columnStyles: { 0: { cellWidth: 36, halign: 'right' }, 3: { cellWidth: 70, fontStyle: 'bold' } },
+      columnStyles: { 0: { cellWidth: 36, halign: 'right' }, 3: { cellWidth: 60, halign: 'center' }, 4: { cellWidth: 70, fontStyle: 'bold' } },
       margin: { left: 40, right: 40 },
     });
     doc.save('start-list-2026-riley-swanson-birthday-tt.pdf');
@@ -142,8 +142,8 @@ function showRows(rows) {
     const tb = document.getElementById('rows'); tb.textContent = '';
     for (const r of rows) {
       const tr = document.createElement('tr');
-      if (!r[0]) { tr.className = 'brk'; const c = td(r[2] || 'Break'); c.colSpan = 5; tr.append(c); }
-      else tr.append(td(r[0], 'n'), td(r[1], 'start'), td(r[2]), td(r[3], 'n'), td(r[4] || ''));
+      if (!r[0]) { tr.className = 'brk'; const c = td(r[2] || 'Break'); c.colSpan = 6; tr.append(c); }
+      else tr.append(td(r[0], 'n'), td(r[1], 'start'), td(r[2]), td(r[3], 'n'), td(r[4] || ''), td(r[5] || ''));
       tb.append(tr);
     }
     const has = rows.some(r => r[0]);
