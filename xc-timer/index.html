@@ -75,7 +75,7 @@ async function load() {
     if (/^\s*</.test(text)) throw new Error('sheet not shared');
     const rows = parseCSV(text);
     const h = (rows.shift() || []).map(x => x.trim().toLowerCase());
-    const iN = h.indexOf('name'), iB = h.findIndex(x => x.includes('birth')), iTm = h.indexOf('team');
+    const iN = h.indexOf('name'), iBs = h.map((x, i) => x.includes('birth') ? i : -1).filter(i => i >= 0), iTm = h.indexOf('team');
     // one entry per name; a later submission replaces an earlier one
     const byName = new Map();
     for (const r of rows) { const n = (r[iN] || '').trim(); if (n) byName.set(n.toLowerCase(), r); }
@@ -85,7 +85,7 @@ async function load() {
       const tr = document.createElement('tr');
       const name = cell(''); const num = document.createElement('span'); num.className = 'num'; num.textContent = (i + 1) + '.';
       name.append(num, ' ' + r[iN].trim());
-      tr.append(name, cell(iB >= 0 ? r[iB] : '', 'n'), cell(iTm >= 0 ? (r[iTm] || '').trim() : ''));
+      tr.append(name, cell(iBs.map(i => (r[i] || '').trim()).find(Boolean) || '', 'n'), cell(iTm >= 0 ? (r[iTm] || '').trim() : ''));
       tb.append(tr);
     });
     if (!list.length) tb.innerHTML = '<tr><td colspan="3" class="muted">Nobody yet. Be the first!</td></tr>';

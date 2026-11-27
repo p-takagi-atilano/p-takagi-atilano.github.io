@@ -307,11 +307,11 @@ async function load() {
     if (/^\s*</.test(text)) throw new Error('sheet not shared');
     const rows = parseCSV(text);
     const h = (rows.shift() || []).map(x => x.trim().toLowerCase());
-    const iT = h.findIndex(x => x.includes('timestamp')), iN = h.indexOf('name'), iB = h.findIndex(x => x.includes('birth')), iTm = h.indexOf('team');
+    const iT = h.findIndex(x => x.includes('timestamp')), iN = h.indexOf('name'), iBs = h.map((x, i) => x.includes('birth') ? i : -1).filter(i => i >= 0), iTm = h.indexOf('team');
     const m = new Map(); // a later submission with the same name replaces the earlier one
     for (const r of rows) {
       const name = (r[iN] || '').trim(); if (!name) continue;
-      const by = String(r[iB] || '').match(/\d{4}/);
+      const by = iBs.map(i => String(r[i] || '')).join(' ').match(/\d{4}/);
       m.set(name.toLowerCase(), { id: name.toLowerCase(), name, birth: by ? +by[0] : '', team: iTm >= 0 ? (r[iTm] || '').trim() : '', reg: parseStamp(r[iT]), regText: (r[iT] || '').trim() });
     }
     racers = m; loaded = true; reconcile(); save();
