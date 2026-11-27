@@ -1,6 +1,6 @@
 // Keeps the Race Timing page usable with no signal.
 // Network first (3 s timeout) so updates arrive when online; saved copy otherwise.
-const CACHE = 'xc-timing-v8';
+const CACHE = 'xc-timing-v9';
 const FILES = ['timing.html', 'offline.html', '../icon.svg', '../icon-192.png'];
 
 self.addEventListener('install', e => {
@@ -17,7 +17,7 @@ self.addEventListener('fetch', e => {
   const isTiming = /\/admin\/timing\.html$/.test(url.pathname);
   const isIcon = /\/xc-timer\/icon(-192\.png|\.svg)$/.test(url.pathname);
   if (!isTiming && !isIcon) {
-    // other admin pages (Start List Creator, Finalize) need signal: if they can't load, show a "No service" page
+    // other admin pages (Start List Creator) need signal: if they can't load, show a "No service" page
     // with a way back to Race Timing (home-screen apps have no back button)
     if (e.request.mode !== 'navigate') return; // sheet data etc. go to the network as usual
     e.respondWith((async () => {
